@@ -1,61 +1,64 @@
 import time
 import os
-from inference_engine import load_vision_model, analyze_plant_status, log_to_csv
+from inference_engine import load_models, analyze_plant_status, log_to_csv
+from model_builder import train_and_save_cnn, train_and_save_rf
+
+# Your Kaggle dataset classes (ensure these match the directory names downloaded)
+CLASS_NAMES = ['Tomato', 'Succulent', 'Fern', 'Orchid'] 
 
 def main():
     print("Starting Demeter Software Pipeline...")
     
-    # 1. Load the model (use relative paths for smooth operation across different OS environments)
-    model_path = 'models/demeter_vision_model.keras' 
+    # Define file paths
+    cnn_model_path = 'models/demeter_cnn.keras'
+    rf_model_path = 'models/demeter_rf.joblib'
     csv_log_path = 'data/plant_diagnostics.csv'
     
-    # Create data directory if it doesn't exist
-    os.makedirs('data', exist_ok=True)
-    
-    try:
-        cnn = load_vision_model(model_path)
-    except FileNotFoundError as e:
-        print(e)
-        print("Please train and save your model to the 'models' directory first.")
-        return
+    # --- TRAINING CHECK ---
+    # If the models don't exist, build them automatically
+    if not os.path.exists(cnn_model_path) or not os.path.exists(rf_model_path):
+        print("\n[!] Models not found. Initiating training sequence...")
+        
+        # NOTE: You must provide the paths to the Kaggle datasets here
+        image_dataset_dir = "path/to/extracted/kaggle_images" 
+        tabular_dataset_csv = "path/to/extracted/kaggle_growth_data.csv"
+        
+        if not os.path.exists(cnn_model_path):
+            train_and_save_cnn(image_dataset_dir, cnn_model_path, epochs=5)
+            
+        if not os.path.exists(rf_model_path):
+            train_and_save_rf(tabular_dataset_csv, rf_model_path)
+            
+        print("[!] Training complete.\n")
 
-    print("Model loaded. Generating diagnoses...\n")
+    # --- INFERENCE PIPELINE ---
+    print("Loading AI Models...")
+    cnn_model, rf_model = load_models(cnn_model_path, rf_model_path)
+    print("System Online. Generating diagnoses...\n")
     
-    # 2. Simulated Loop (Iterating over dummy data)
     dummy_readings = [
         {"image": "test_images/plant_1.jpg", "temp": 25.5, "moisture": 30.0, "light": 4000},
-        {"image": "test_images/plant_2.jpg", "temp": 22.0, "moisture": 15.0, "light": 8000},
-        {"image": "test_images/plant_3.jpg", "temp": 28.0, "moisture": 60.0, "light": 2500}
+        {"image": "test_images/plant_2.jpg", "temp": 22.0, "moisture": 15.0, "light": 8000}
     ]
     
     for reading in dummy_readings:
-        # Check if the test image exists before processing
         if os.path.exists(reading["image"]):
-            
-            # Get the diagnosis dictionary
             diagnosis = analyze_plant_status(
                 image_path=reading["image"], 
-                temp=reading["temp"], 
-                moisture=reading["moisture"], 
-                light=reading["light"], 
-                cnn_model=cnn
+                temp=reading["temp"], moisture=reading["moisture"], light=reading["light"], 
+                cnn_model=cnn_model, rf_model=rf_model, class_names=CLASS_NAMES
             )
             
-            # Print to console for real-time viewing
-            print(f"[{diagnosis['Timestamp']}] Species: {diagnosis['Species']} "
+            print(f"[{diagnosis['Timestamp']}] {diagnosis['Species']} "
                   f"| Water: {diagnosis['Needs_Water']} "
                   f"| Fert: {diagnosis['Needs_Fertilizer']} "
                   f"| Light: {diagnosis['Needs_More_Sunlight']}")
             
-            # Log to CSV
             log_to_csv(diagnosis, filepath=csv_log_path)
-            
         else:
             print(f"Skipping {reading['image']}: File not found.")
             
-        time.sleep(1) # Short delay for simulation purposes
-
-    print(f"\nDiagnostics complete. Results saved to {csv_log_path}")
+        time.sleep(1)
 
 if __name__ == "__main__":
     main()
