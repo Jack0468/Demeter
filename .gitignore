@@ -1,0 +1,58 @@
+# ==========================================
+# DEMETER PROJECT SPECIFIC
+# ==========================================
+# Ignore downloaded Kaggle datasets (Images and Tabular data)
+data/raw_images/
+data/tabular/
+
+# Ignore generated log files (keep the data folder clean)
+data/*.csv
+
+# Ignore trained machine learning models (these are large binary files)
+models/*.keras
+models/*.joblib
+models/*.h5
+models/*.pb
+saved_model/
+
+# Ignore temporary test images (if you test with your web cam or phone)
+test_images/*
+!test_images/README.md 
+# (The line above keeps the folder in Git, but ignores its contents)
+
+# ==========================================
+# PYTHON & ENVIRONMENT
+# ==========================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Conda / Virtual Environments 
+# (Important if you build environments inside the project folder in WSL)
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Jupyter Notebook checkpoints (in case you use them for testing)
+.ipynb_checkpoints/
+
+# ==========================================
+# OS & IDE SPECIFIC
+# ==========================================
+# Windows / WSL
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Mac (just in case a teammate uses one)
+.DS_Store
+
+# VS Code / PyCharm settings
+.vscode/
+.idea/
