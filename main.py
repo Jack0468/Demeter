@@ -20,8 +20,11 @@ def main():
         print("\n[!] Models not found. Initiating training sequence...")
         
         # NOTE: You must provide the paths to the Kaggle datasets here
-        image_dataset_dir = "path/to/extracted/kaggle_images" 
-        tabular_dataset_csv = "path/to/extracted/kaggle_growth_data.csv"
+        image_dataset_dir = "data/raw_images" 
+        
+        # Note: You will need to check the exact filename of the CSV downloaded 
+        # inside the 'tabular' folder to replace 'plant_growth_data.csv'
+        tabular_dataset_csv = "data/tabular/plant_growth_data.csv"
         
         if not os.path.exists(cnn_model_path):
             train_and_save_cnn(image_dataset_dir, cnn_model_path, epochs=5)
