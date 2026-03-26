@@ -1,6 +1,7 @@
 import os
 import shutil
 import kagglehub
+import tensorflow_datasets as tfds
 
 def download_and_organize_data():
     print("Starting Demeter Data Initialization...\n")
@@ -51,5 +52,40 @@ def download_and_organize_data():
     print(f"Tabular data located at: {tabular_target_dir}")
     print("==========================================")
 
+def download_advanced_datasets():
+    print("Initializing Demeter Advanced Data Setup...\n")
+    
+    base_dir = os.path.join(os.getcwd(), 'data')
+    dirs = {
+        'rgb_species': os.path.join(base_dir, 'rgb_species'),
+        'rgb_health': os.path.join(base_dir, 'rgb_health'),
+        'thermal_stress': os.path.join(base_dir, 'thermal_stress')
+    }
+    
+    for path in dirs.values():
+        os.makedirs(path, exist_ok=True)
+
+    # 1. Base Species Dataset (Kaggle)
+    print("1. Downloading RGB Species Dataset...")
+    try:
+        species_path = kagglehub.dataset_download("yudhaislamisulistya/plants-type-datasets")
+        shutil.copytree(species_path, dirs['rgb_species'], dirs_exist_ok=True)
+    except Exception as e:
+        print(f"Error: {e}")
+
+    # 2. Plant Health/Disease Dataset (TensorFlow Datasets)
+    print("\n2. Downloading Plant Health Dataset (TFDS)...")
+    try:
+        # plant_village contains images of healthy and unhealthy leaves
+        ds, info = tfds.load('plant_village', split='train', with_info=True, data_dir=dirs['rgb_health'])
+        print(f"Successfully downloaded {info.splits['train'].num_examples} health images.")
+    except Exception as e:
+        print(f"Error downloading TFDS: {e}")
+
+    # 3. Thermal Imaging Data
+    print("\n3. Thermal Imaging Data Structure Created.")
+    print(f"NOTE: Please manually download the Danforth/AI4EOSC thermal datasets and extract them to: {dirs['thermal_stress']}")
+
 if __name__ == "__main__":
-    download_and_organize_data()
+    #download_and_organize_data()
+    download_advanced_datasets()
