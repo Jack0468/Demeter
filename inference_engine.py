@@ -27,20 +27,30 @@ def analyze_plant_status(image_path, temp, moisture, light, cnn_model, rf_model,
     detected_species = class_names[species_idx]
     confidence = float(predictions[0][species_idx])
     
-    # 2. Determine Needs (Random Forest)
-    # We format the input exactly as the RF model saw it during training
-    # Note: species_idx represents the 'Species_Code' here
-    sensor_data = np.array([[species_idx, temp, moisture, light]])
+# 2. Determine Needs (Random Forest)
+    # We must format the sensor data exactly as the model was trained: 
+    # [Temperature, Humidity, Sunlight_Hours, Soil_Type_Code]
+    # For simulation, we will assume a generic soil type code of 0 ('loam')
+    sensor_data = np.array([[temp, moisture, light, 0]])
     
-    # The RF outputs a 2D array of predictions (e.g., [1, 0, 1] for Yes, No, Yes)
-    rf_predictions = rf_model.predict(sensor_data)[0] 
+    # The RF now outputs a single prediction: 0 (Struggling) or 1 (Thriving)
+    rf_prediction = rf_model.predict(sensor_data)[0] 
     
-    # Map binary output back to Yes/No
-    action_plan = {
-        "Needs_Water": "Yes" if rf_predictions[0] == 1 else "No",
-        "Needs_Fertilizer": "Yes" if rf_predictions[1] == 1 else "No",
-        "Needs_More_Sunlight": "Yes" if rf_predictions[2] == 1 else "No"
-    }
+    # Generate the Yes/No Action Plan based on the AI's milestone prediction
+    if rf_prediction == 0:
+        # The AI predicts the plant will fail its growth milestone. Intervene!
+        action_plan = {
+            "Needs_Water": "Yes" if moisture < 40.0 else "No",
+            "Needs_Fertilizer": "Yes", # General recommendation to boost failing growth
+            "Needs_More_Sunlight": "Yes" if light < 6.0 else "No"
+        }
+    else:
+        # The AI predicts the plant is thriving. No action needed.
+        action_plan = {
+            "Needs_Water": "No",
+            "Needs_Fertilizer": "No",
+            "Needs_More_Sunlight": "No"
+        }
     
     # 3. Compile the final data package
     result = {

@@ -63,20 +63,29 @@ def train_and_save_rf(csv_dataset_path, save_path):
     # 1. Load Tabular Data
     df = pd.read_csv(csv_dataset_path)
     
-    # Assuming columns: 'Species_Code', 'Temp', 'Moisture', 'Light', 'Needs_Water', 'Needs_Fertilizer', 'Needs_Light'
-    # You will need to adjust these feature names to match the Kaggle tabular dataset exactly
-    X = df[['Species_Code', 'Temp', 'Moisture', 'Light']] 
+    # 2. Preprocess Categorical Data
+    # Machine learning models only understand numbers, not words.
+    # This converts text like 'loam' or 'sandy' into numeric codes (0, 1, 2)
+    df['Soil_Type'] = df['Soil_Type'].astype('category').cat.codes
+    df['Water_Frequency'] = df['Water_Frequency'].astype('category').cat.codes
+    df['Fertilizer_Type'] = df['Fertilizer_Type'].astype('category').cat.codes
     
-    # For a multi-output scenario (Yes/No for 3 different things), we train on multiple targets
-    y = df[['Needs_Water', 'Needs_Fertilizer', 'Needs_Light']] 
+    # 3. Define Features (X) and Target (y) matching the Kaggle CSV exactly
+    # We will use Temp, Humidity, Sunlight, and Soil Type to make our prediction
+    X = df[['Temperature', 'Humidity', 'Sunlight_Hours', 'Soil_Type']] 
     
+    # The dataset target is 'Growth_Milestone' (0 = Failing, 1 = Thriving)
+    y = df['Growth_Milestone'] 
+    
+    from sklearn.model_selection import train_test_split
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     
-    # 2. Train Model
+    # 4. Train Model
     rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
     rf_model.fit(X_train, y_train)
     
-    # 3. Save Model
+    # 5. Save Model
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    import joblib
     joblib.dump(rf_model, save_path)
     print(f"Random Forest successfully saved to {save_path}")

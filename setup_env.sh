@@ -28,7 +28,7 @@ conda install cmake -y
 
 # 4. Install all the required Machine Learning Python libraries
 echo "[4/4] Installing Python dependencies via pip..."
-pip install tensorflow pandas numpy scikit-learn kagglehub joblib tensorflow-datasets
+pip install tensorflow pandas numpy scikit-learn kagglehub joblib tensorflow-datasets Pillow
 
 echo "=========================================="
 echo "✅ Environment Setup Complete!"
