@@ -2,90 +2,134 @@ import time
 import os
 import glob
 import json
+import pandas as pd
 from inference_engine import load_models, analyze_plant_status, log_to_csv
-from model_builder import train_and_save_cnn, train_and_save_rf
+from model_builder import train_and_save_cnn, train_and_save_rf # Now active!
 
 # --- CONFIGURATION LOADING ---
-# Load settings from config.json
 try:
     with open('config.json', 'r') as config_file:
         config = json.load(config_file)
 except FileNotFoundError:
-    print("[!] ERROR: config.json not found. Please copy config.example.json to config.json and update the paths.")
+    print("[!] ERROR: config.json not found.")
     exit(1)
 
 TRAIN_MODEL = config['training']['force_retrain']
 
-# Define file paths dynamically from config
 cnn_model_path = config['paths']['cnn_model']
 rf_model_path = config['paths']['rf_model']
 csv_log_path = config['paths']['csv_log']
+bellwether_dir = config['paths']['bellwether_images_dir']
 
-image_dataset_train_dir = config['paths']['image_train_dir']
-image_dataset_validation_dir = config['paths']['image_val_dir']
-image_dataset_test_dir = config['paths']['image_test_dir']
-tabular_dataset_csv = config['paths']['tabular_csv']
 
-# Detect Kaggle dataset classes dynamically based on your train directory
-try:
-    CLASS_NAMES = sorted([f for f in os.listdir(image_dataset_train_dir) if os.path.isdir(os.path.join(image_dataset_train_dir, f))])
-    print(f"Detected {len(CLASS_NAMES)} plant classes.")
-except FileNotFoundError:
-    print(f"[!] WARNING: Training directory not found at {image_dataset_train_dir}")
-    CLASS_NAMES = []
+def load_bellwether_metadata(base_dir):
+    """
+    Reads and merges the SnapshotInfo and TileInfo CSVs to link 
+    image filenames with their physical plant measurements.
+    """
+    print("Loading Bellwether metadata CSVs...")
+    snapshot_path = os.path.join(base_dir, "SnapshotInfo.csv")
+    tile_path = os.path.join(base_dir, "TileInfo.csv")
+    
+    if not os.path.exists(snapshot_path) or not os.path.exists(tile_path):
+        print(f"[!] ERROR: Missing CSV files in {base_dir}")
+        return None
+
+    # Load the CSVs
+    df_snap = pd.read_csv(snapshot_path)
+    df_tile = pd.read_csv(tile_path)
+
+    # Clean up column names to avoid trailing spaces common in CSV exports
+    df_snap.columns = df_snap.columns.str.strip()
+    df_tile.columns = df_tile.columns.str.strip()
+
+    # Merge the dataframes
+    merged_df = pd.merge(
+        df_tile, 
+        df_snap, 
+        left_on='parent snapshot id', 
+        right_on='id', 
+        suffixes=('_tile', '_snap')
+    )
+    
+    return merged_df
 
 
 def main():
     print("Starting Demeter Software Pipeline...")
     
+    # 1. LOAD METADATA
+    metadata_df = load_bellwether_metadata(bellwether_dir)
+    if metadata_df is None or metadata_df.empty:
+        print("Failed to load metadata. Exiting.")
+        return
+        
+    print(f"Successfully linked {len(metadata_df)} image records with plant data.\n")
+
     # --- TRAINING CHECK ---
+    # Now correctly passes the pandas dataframe and directory to the updated builder functions
     if not os.path.exists(cnn_model_path) or not os.path.exists(rf_model_path) or TRAIN_MODEL:
         print("\n[!] Models not found or retrain forced. Initiating training sequence...")
         
         if not os.path.exists(cnn_model_path) or TRAIN_MODEL:
-            train_and_save_cnn(image_dataset_train_dir, cnn_model_path, epochs=config['training']['epochs'])
+            train_and_save_cnn(metadata_df, bellwether_dir, cnn_model_path, epochs=config['training']['epochs'])
             
         if not os.path.exists(rf_model_path) or TRAIN_MODEL:
-            train_and_save_rf(tabular_dataset_csv, rf_model_path)
+            train_and_save_rf(metadata_df, rf_model_path)
             
         print("[!] Training complete.\n")
 
     # --- INFERENCE PIPELINE ---
     print("Loading AI Models...")
-    cnn_model, rf_model = load_models(cnn_model_path, rf_model_path)
+    cnn_model, rf_model = load_models(cnn_model_path, rf_model_path) 
     print("System Online. Generating diagnoses...\n")
     
-    # --- AUTOMATIC TEST DATA LOADING ---
-    test_images = []
-    for extension in ('/**/*.jpg', '/**/*.jpeg', '/**/*.png'):
-        test_images.extend(glob.glob(image_dataset_test_dir + extension, recursive=True))
-
-    if not test_images:
-        print(f"No images found in {image_dataset_test_dir}. Please check your config.json path.")
-        return
-
-    print(f"Found {len(test_images)} images. Testing first 5...")
+    # Let's test the first 5 visible spectrum images from the dataframe
+    vis_images = metadata_df[metadata_df['spectrum'].str.contains('Visible', na=False, case=False)].head(5)
     
-    for i, img_path in enumerate(test_images[:5]):
-        # Simulated sensor data for testing purposes
-        diagnosis = analyze_plant_status(
-            image_path=img_path, 
-            temp=24.0, 
-            moisture=20.0, 
-            light=5000, 
-            cnn_model=cnn_model, 
-            rf_model=rf_model, 
-            class_names=CLASS_NAMES
-        )
+    for index, row in vis_images.iterrows():
+        # Construct the absolute path to the image
+        snapshot_folder = f"snapshot{row['parent snapshot id']}"
+        image_filename = f"{row['name']}.jpg"
         
-        print(f"Test {i+1}: {os.path.basename(img_path)}")
-        print(f"[{diagnosis['Timestamp']}] Predicted: {diagnosis['Species']} "
-              f"| Water: {diagnosis['Needs_Water']} "
-              f"| Fert: {diagnosis['Needs_Fertilizer']} "
-              f"| Light: {diagnosis['Needs_More_Sunlight']}")
-        print("-" * 30)
+        img_path = os.path.join(bellwether_dir, snapshot_folder, image_filename)
         
-        log_to_csv(diagnosis, filepath=csv_log_path)
+        # Check if the constructed path actually exists on the drive
+        if not os.path.exists(img_path):
+            print(f"[!] Warning: Image not found at {img_path}")
+            continue
+            
+        # Extract the real data from the CSV
+        water_amount = row['water amount']
+        weight_before = row['weight before']
+        plant_barcode = row['plant barcode']
+        
+        print(f"Test Plant: {plant_barcode} | Image: {image_filename}")
+        print(f"Actual Data -> Water Applied: {water_amount}ml | Weight Before: {weight_before}g")
+        
+        # --- PASS TO INFERENCE ENGINE ---
+        # Note: I updated the class_names to match the new binary setup in model_builder.py
+        try:
+            diagnosis = analyze_plant_status(
+                image_path=img_path, 
+                water_amount=water_amount,      
+                weight=weight_before,           
+                cnn_model=cnn_model, 
+                rf_model=rf_model, 
+                class_names=['Water_Stressed', 'Well_Watered'] 
+            )
+            
+            # Print output (Assuming your inference_engine still returns a dictionary like this)
+            print(f"Predicted Status -> Vision: {diagnosis.get('Species', 'N/A')} | "
+                  f"Needs Water (RF): {diagnosis.get('Needs_Water', 'N/A')}")
+            
+            log_to_csv(diagnosis, filepath=csv_log_path)
+            
+        except Exception as e:
+            print(f"[!] Inference engine encountered an error: {e}")
+            print("You may need to update 'inference_engine.py' to accept 'water_amount' and 'weight' kwargs instead of 'temp', 'moisture', 'light'.")
+            
+        print("-" * 40)
         time.sleep(0.5)
 
 if __name__ == "__main__":

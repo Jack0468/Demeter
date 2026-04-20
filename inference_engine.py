@@ -14,52 +14,47 @@ def load_models(cnn_path, rf_path):
     rf_model = joblib.load(rf_path)
     return cnn_model, rf_model
 
-def analyze_plant_status(image_path, temp, moisture, light, cnn_model, rf_model, class_names):
+def analyze_plant_status(image_path, water_amount, weight, cnn_model, rf_model, class_names):
     """Runs the full pipeline: Image classification + Random Forest logic."""
     
+    # ==========================================
     # 1. Vision Classification (CNN)
+    # ==========================================
     img = tf.keras.utils.load_img(image_path, target_size=(150, 150))
     img_array = tf.keras.utils.img_to_array(img)
     img_array = tf.expand_dims(img_array, 0)
     
     predictions = cnn_model.predict(img_array, verbose=0)
     species_idx = np.argmax(predictions[0])
-    detected_species = class_names[species_idx]
+    detected_status_vision = class_names[species_idx] # e.g., 'Water_Stressed'
     confidence = float(predictions[0][species_idx])
     
-# 2. Determine Needs (Random Forest)
-    # We must format the sensor data exactly as the model was trained: 
-    # [Temperature, Humidity, Sunlight_Hours, Soil_Type_Code]
-    # For simulation, we will assume a generic soil type code of 0 ('loam')
-    sensor_data = np.array([[temp, moisture, light, 0]])
+    # ==========================================
+    # 2. Determine Needs (Random Forest)
+    # ==========================================
+    # The RF was trained in model_builder.py purely on 'weight before' 
+    # to predict if the plant needed water (1 = Yes, 0 = No).
+    sensor_data = np.array([[weight]])
     
-    # The RF now outputs a single prediction: 0 (Struggling) or 1 (Thriving)
     rf_prediction = rf_model.predict(sensor_data)[0] 
     
-    # Generate the Yes/No Action Plan based on the AI's milestone prediction
-    if rf_prediction == 0:
-        # The AI predicts the plant will fail its growth milestone. Intervene!
-        action_plan = {
-            "Needs_Water": "Yes" if moisture < 40.0 else "No",
-            "Needs_Fertilizer": "Yes", # General recommendation to boost failing growth
-            "Needs_More_Sunlight": "Yes" if light < 6.0 else "No"
-        }
-    else:
-        # The AI predicts the plant is thriving. No action needed.
-        action_plan = {
-            "Needs_Water": "No",
-            "Needs_Fertilizer": "No",
-            "Needs_More_Sunlight": "No"
-        }
+    # Generate the Action Plan
+    action_plan = {
+        "Needs_Water": "Yes" if rf_prediction == 1 else "No",
+        # We can still derive secondary inferences based on the data
+        "Needs_Fertilizer": "Yes" if weight < 450 else "No", # Arbitrary threshold for Demeter prototype
+        "Vision_Status": detected_status_vision
+    }
     
+    # ==========================================
     # 3. Compile the final data package
+    # ==========================================
     result = {
         "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "Species": detected_species,
+        "Species": "Setaria", # We know the species for this dataset
         "Confidence": round(confidence, 3),
-        "Temp_C": temp,
-        "Moisture_%": moisture,
-        "Light_lux": light
+        "Weight_g": weight,
+        "Water_Applied_ml": water_amount
     }
     result.update(action_plan) 
     return result
