@@ -7,6 +7,7 @@ from tensorflow.keras import layers, models
 from tensorflow.keras.applications import MobileNetV2
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
+from model_evaluation import evaluate_cnn_model, evaluate_rf_model
 
 # ==========================================
 # 1. THE DEDICATED AUGMENTER
@@ -67,7 +68,10 @@ def train_and_save_cnn(dataset_dir, save_path, img_height=150, img_width=150, ep
                   metrics=['accuracy'])
     
     print(f"Training CNN for {epochs} epochs...")
-    model.fit(train_ds, validation_data=val_ds, epochs=epochs)
+    history = model.fit(train_ds, validation_data=val_ds, epochs=epochs)
+    
+    # Evaluate CNN using the new module
+    val_accuracy, precision, recall, f1 = evaluate_cnn_model(model, val_ds, class_names)
     
     # Save Model
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
@@ -95,6 +99,9 @@ def train_and_save_rf(csv_dataset_path, save_path):
     # Train and Save
     rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
     rf_model.fit(X_train, y_train)
+
+    # Evaluate Random Forest using the new module
+    evaluate_rf_model(rf_model, X_test, y_test)
     
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     joblib.dump(rf_model, save_path)

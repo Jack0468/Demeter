@@ -4,7 +4,7 @@ import glob
 from inference_engine import load_models, analyze_plant_status, log_to_csv
 from model_builder import train_and_save_cnn, train_and_save_rf
 
-TRAIN_MODEL = False # Set to True to train models from scratch (will take time, especially without GPU)
+TRAIN_MODEL = True # Set to True to train models from scratch (will take time, especially without GPU)
 
 # Define file paths
 cnn_model_path = 'models/demeter_cnn.keras'

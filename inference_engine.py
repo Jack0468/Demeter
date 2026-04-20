@@ -62,7 +62,6 @@ def analyze_plant_status(image_path, temp, moisture, light, cnn_model, rf_model,
         "Light_lux": light
     }
     result.update(action_plan) 
-    
     return result
 
 def log_to_csv(data_dict, filepath="data/demeter_logs.csv"):
