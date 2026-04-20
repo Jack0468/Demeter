@@ -3,10 +3,9 @@
     "cnn_model": "models/demeter_cnn.keras",
     "rf_model": "models/demeter_rf.joblib",
     "csv_log": "data/plant_diagnostics.csv",
-    "bellwether_images_dir": "/mnt/e/fahlgren_et_al_2015_bellwether_jpeg/images"
-  },
+    "bellwether_images_dir": "/mnt/c/Users/Admin/Downloads/fahlgren_et_al_2015_bellwether_jpeg/images"  },
   "training": {
-    "force_retrain": false,
+    "force_retrain": true,
     "epochs": 5
   }
 }

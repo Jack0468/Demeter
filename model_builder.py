@@ -5,7 +5,7 @@ import tensorflow as tf
 import joblib  # Required for saving Scikit-Learn models
 from tensorflow.keras import layers, models
 from tensorflow.keras.applications import MobileNetV2
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestRegressor # Changed from Classifier
 from sklearn.model_selection import train_test_split
 from model_evaluation import evaluate_cnn_model, evaluate_rf_model
 
@@ -42,8 +42,8 @@ def train_and_save_cnn(df, base_dir, save_path, img_height=150, img_width=150, e
         axis=1
     )
     
-    # 2. Filter out paths that don't exist (crucial for external drives in WSL)
-    df_vis = df_vis[df_vis['filepath'].apply(os.path.exists)]
+    # 2. Filter out paths that don't exist AND ignore 0-byte (empty) files
+    df_vis = df_vis[df_vis['filepath'].apply(lambda p: os.path.exists(p) and os.path.getsize(p) > 0)]
     
     if df_vis.empty:
         print("[!] ERROR: No valid image paths found. Check WSL mount mapping.")
@@ -115,30 +115,29 @@ def train_and_save_cnn(df, base_dir, save_path, img_height=150, img_width=150, e
 # 3. RANDOM FOREST TRAINING PIPELINE
 # ==========================================
 def train_and_save_rf(df, save_path):
-    """Trains a Random Forest on tabular sensor data from the Bellwether CSV."""
-    print("Initializing Random Forest Training Pipeline...")
+    """Trains a Random Forest Regressor on tabular sensor data to predict growth trajectory."""
+    print("Initializing Random Forest Regressor Training Pipeline...")
     
     # Drop rows with NaN values in our target features
-    df_clean = df.dropna(subset=['weight before', 'water amount']).copy()
+    df_clean = df.dropna(subset=['weight before', 'water amount', 'weight after']).copy()
     
-    # Feature Engineering based on Bellwether schema
-    # Using 'weight before' as a proxy for soil moisture/biomass
-    X = df_clean[['weight before']] 
+    # Features: Current state (Weight) + Intervention (Water Applied)
+    X = df_clean[['weight before', 'water amount']] 
     
-    # Creating a target variable: Does it need water?
-    # If the system dispensed an above-average amount of water, we classify it as needing water.
-    median_water = df_clean['water amount'].median()
-    y = (df_clean['water amount'] >= median_water).astype(int)
+    # Target: Continuous future growth metric (The resulting weight of the plant/soil)
+    y = df_clean['weight after']
     
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     
-    # Train and Save
-    rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
+    # Train as a Regressor
+    rf_model = RandomForestRegressor(n_estimators=100, random_state=42)
     rf_model.fit(X_train, y_train)
 
-    # Evaluate Random Forest 
-    evaluate_rf_model(rf_model, X_test, y_test)
+    # Evaluate using RMSE (As promised in the proposal)
+    predictions = rf_model.predict(X_test)
+    rmse = mean_squared_error(y_test, predictions, squared=False)
+    print(f"Random Forest Regressor RMSE: {rmse:.2f}g")
     
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     joblib.dump(rf_model, save_path)
-    print(f"Random Forest successfully saved to {save_path}")
+    print(f"Random Forest Regressor successfully saved to {save_path}")
