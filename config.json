@@ -1,0 +1,15 @@
+{
+  "paths": {
+    "cnn_model": "models/demeter_cnn.keras",
+    "rf_model": "models/demeter_rf.joblib",
+    "csv_log": "data/plant_diagnostics.csv",
+    "image_train_dir": "/path/to/Train_Set_Folder",
+    "image_val_dir": "/path/to/Validation_Set_Folder",
+    "image_test_dir": "/path/to/Test_Set_Folder",
+    "tabular_csv": "data/tabular/plant_growth_data.csv"
+  },
+  "training": {
+    "force_retrain": false,
+    "epochs": 5
+  }
+}
