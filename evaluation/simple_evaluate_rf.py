@@ -7,13 +7,13 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, a
 
 
 def evaluate_simple_rf(model_path, csv_path):
-    print('loading rf model ->', model_path)
+    print('loading rf ->', model_path)
     model = joblib.load(model_path)
 
     print('loading csv ->', csv_path)
     df = pd.read_csv(csv_path)
 
-    # if csv have Needs_Water then just check that one - quick check
+    # if dataset has Needs_Water then do quick classification check
     if 'Needs_Water' in df.columns:
         X = df[['Species_Code', 'Temp', 'Moisture', 'Light']]
         y = df['Needs_Water']
@@ -24,10 +24,11 @@ def evaluate_simple_rf(model_path, csv_path):
         print('accuracy ->', f'{acc:.4f}')
         return
 
-    # Otherwise try regression with last numeric column as target
+    # otherwise try regression - use last numeric column as target
     numeric = df.select_dtypes(include=[np.number])
     if numeric.shape[1] < 2:
-        raise ValueError('Not enough numeric columns to infer regression features and target')
+        print('not enough numeric cols to eval regression')
+        return
 
     target = numeric.columns[-1]
     X = numeric.drop(columns=[target])
@@ -39,7 +40,7 @@ def evaluate_simple_rf(model_path, csv_path):
     mae = mean_absolute_error(y_true, y_pred)
     r2 = r2_score(y_true, y_pred)
 
-    print('\nquick RF regression report:')
+    print('\nquick RF regression:')
     print('target ->', target)
     print('samples ->', len(y_true))
     print('rmse ->', f'{rmse:.4f}')
@@ -48,9 +49,8 @@ def evaluate_simple_rf(model_path, csv_path):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Simple Random Forest evaluator')
-    parser.add_argument('--model', required=True, help='Path to RF joblib file')
-    parser.add_argument('--csv', required=True, help='Path to CSV data file')
-    args = parser.parse_args()
-
+    p = argparse.ArgumentParser(description='Simple RF eval')
+    p.add_argument('--model', required=True, help='path to joblib model')
+    p.add_argument('--csv', required=True, help='path to csv data')
+    args = p.parse_args()
     evaluate_simple_rf(args.model, args.csv)
