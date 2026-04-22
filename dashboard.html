@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Demeter — Plant Assessment</title>
+  <title>Demeter — Plant Health Management</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: sans-serif; background: #f4f6f2; color: #1a1a1a; }
@@ -161,8 +161,8 @@
 <body>
 
   <header>
-    <h1>Demeter — Plant Health Assessment System</h1>
-    <p>CNN species classification &middot; Random Forest stress diagnosis &middot; Actionable recommendations</p>
+    <h1>Demeter — Plant Health Management</h1>
+    <p>CNN disease detection &middot; Sensor-based stress diagnosis &middot; Growth trajectory prediction &middot; Actionable cultivation recommendations</p>
   </header>
 
   <main>
@@ -171,8 +171,9 @@
     <div class="card">
       <h2>Image Input</h2>
       <div class="image-box">[ Plant image preview ]</div>
-      <button class="upload-btn">Upload Image</button>
+      <button class="upload-btn">Upload Plant Image</button>
 
+      <h2 style="margin-top:18px;">Environmental Sensors</h2>
       <div class="sensors">
         <div class="metric">
           <div class="label">Temperature</div>
@@ -189,31 +190,78 @@
       </div>
     </div>
 
-    <!-- RIGHT: Results -->
+    <!-- RIGHT: CNN Results -->
     <div class="card">
-      <h2>Classification</h2>
-      <div class="species-row">
-        <span class="species-name">Tomato</span>
-        <span class="confidence">Confidence: 91%</span>
+      <h2>CNN — Disease Detection</h2>
+      <div style="margin-top:4px;">
+        <div class="species-row">
+          <span style="font-weight:bold;">Early Blight detected</span>
+          <span class="confidence">Disease confidence: 84%</span>
+        </div>
+        <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:84%; background:#b91c1c;"></div></div>
       </div>
-      <div class="progress-bar-bg"><div class="progress-bar-fill"></div></div>
 
-      <div class="status struggling">Struggling</div>
+      <div class="status struggling" style="margin-top:14px;">Overall Status: Struggling</div>
 
-      <h2 style="margin-top:16px;">Action Plan</h2>
+      <h2 style="margin-top:16px;">Actionable Recommendations</h2>
       <div class="actions">
         <div class="action-item alert">
-          <span class="icon">💧</span>Needs Water
+          <span class="icon">💧</span>Increase watering frequency
         </div>
         <div class="action-item alert">
-          <span class="icon">🌱</span>Needs Fertilizer
+          <span class="icon">🍂</span>Remove affected leaves
         </div>
         <div class="action-item alert">
-          <span class="icon">☀️</span>Needs Sunlight
+          <span class="icon">🧪</span>Apply fungicide
         </div>
       </div>
 
       <div class="command-box">System Command: ACTIVATE_WATER_PUMP</div>
+    </div>
+
+    <!-- MIDDLE: Stress Diagnosis + Growth Trajectory -->
+    <div class="card">
+      <h2>Stress Diagnosis</h2>
+      <div class="sensors" style="grid-template-columns: 1fr 1fr; gap:10px;">
+        <div class="metric" style="background:#fde8e8;">
+          <div class="label">Moisture Stress</div>
+          <div class="value" style="color:#b91c1c;">High</div>
+        </div>
+        <div class="metric">
+          <div class="label">Temperature Stress</div>
+          <div class="value">Low</div>
+        </div>
+        <div class="metric" style="background:#fde8e8;">
+          <div class="label">Light Deficit</div>
+          <div class="value" style="color:#b91c1c;">Moderate</div>
+        </div>
+        <div class="metric">
+          <div class="label">Nutrient Status</div>
+          <div class="value">Normal</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Growth Trajectory Prediction</h2>
+      <div style="margin-bottom:10px; font-size:0.85rem; color:#555;">Projected next 7 days based on current sensor readings</div>
+      <div class="sensors" style="grid-template-columns: 1fr 1fr 1fr; gap:10px;">
+        <div class="metric">
+          <div class="label">Day 3</div>
+          <div class="value" style="color:#b45309;">Fair</div>
+        </div>
+        <div class="metric">
+          <div class="label">Day 5</div>
+          <div class="value" style="color:#b91c1c;">Poor</div>
+        </div>
+        <div class="metric">
+          <div class="label">Day 7</div>
+          <div class="value" style="color:#b91c1c;">Poor</div>
+        </div>
+      </div>
+      <div style="margin-top:14px; font-size:0.82rem; background:#fff7ed; border-left:3px solid #f97316; padding:8px 12px; border-radius:0 4px 4px 0; color:#92400e;">
+        Trajectory will improve if moisture is restored to &ge;50% within 24 hrs.
+      </div>
     </div>
 
     <!-- BOTTOM: Log -->
@@ -224,17 +272,18 @@
           <tr>
             <th>Timestamp</th>
             <th>Species</th>
+            <th>Disease Detected</th>
             <th>Status</th>
             <th>Moisture (%)</th>
             <th>Temp (°C)</th>
           </tr>
         </thead>
         <tbody>
-          <tr><td>2026-04-22 10:00</td><td>Tomato</td><td class="tag-thriving">Thriving</td><td>55.0</td><td>22.0</td></tr>
-          <tr><td>2026-04-22 11:00</td><td>Tomato</td><td class="tag-thriving">Thriving</td><td>50.0</td><td>22.5</td></tr>
-          <tr><td>2026-04-22 12:00</td><td>Tomato</td><td class="tag-thriving">Thriving</td><td>44.0</td><td>23.0</td></tr>
-          <tr><td>2026-04-22 13:00</td><td>Tomato</td><td class="tag-struggling">Struggling</td><td>38.0</td><td>24.0</td></tr>
-          <tr><td>2026-04-22 14:00</td><td>Tomato</td><td class="tag-struggling">Struggling</td><td>32.0</td><td>24.5</td></tr>
+          <tr><td>2026-04-22 10:00</td><td>Plant</td><td>None</td><td class="tag-thriving">Thriving</td><td>55.0</td><td>22.0</td></tr>
+          <tr><td>2026-04-22 11:00</td><td>Plant</td><td>None</td><td class="tag-thriving">Thriving</td><td>50.0</td><td>22.5</td></tr>
+          <tr><td>2026-04-22 12:00</td><td>Plant</td><td>None</td><td class="tag-thriving">Thriving</td><td>44.0</td><td>23.0</td></tr>
+          <tr><td>2026-04-22 13:00</td><td>Plant</td><td>Early Blight</td><td class="tag-struggling">Struggling</td><td>38.0</td><td>24.0</td></tr>
+          <tr><td>2026-04-22 14:00</td><td>Plant</td><td>Early Blight</td><td class="tag-struggling">Struggling</td><td>32.0</td><td>24.5</td></tr>
         </tbody>
       </table>
     </div>
