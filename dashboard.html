@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Demeter — Plant Assessment</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #f4f6f2; color: #1a1a1a; }
+
+    header {
+      background: #2d6a4f;
+      color: white;
+      padding: 16px 24px;
+    }
+    header h1 { font-size: 1.4rem; }
+    header p  { font-size: 0.85rem; opacity: 0.8; margin-top: 4px; }
+
+    main {
+      max-width: 1100px;
+      margin: 24px auto;
+      padding: 0 16px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      border: 1px solid #dde8da;
+    }
+    .card h2 { font-size: 1rem; margin-bottom: 14px; color: #2d6a4f; }
+
+    /* Image upload placeholder */
+    .image-box {
+      width: 100%;
+      height: 180px;
+      background: #eef4eb;
+      border: 2px dashed #95c9a4;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #888;
+      font-size: 0.9rem;
+      margin-bottom: 12px;
+    }
+    .image-box input { display: none; }
+    .upload-btn {
+      background: #2d6a4f;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    /* Sensor metrics */
+    .sensors {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .metric {
+      background: #eef4eb;
+      border-radius: 6px;
+      padding: 12px;
+      text-align: center;
+    }
+    .metric .label { font-size: 0.75rem; color: #555; margin-bottom: 4px; }
+    .metric .value { font-size: 1.2rem; font-weight: bold; color: #2d6a4f; }
+
+    /* Classification */
+    .species-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .species-name { font-size: 1.3rem; font-weight: bold; }
+    .confidence { font-size: 0.85rem; color: #555; }
+    .progress-bar-bg {
+      background: #eef4eb;
+      border-radius: 999px;
+      height: 10px;
+      width: 100%;
+    }
+    .progress-bar-fill {
+      background: #2d6a4f;
+      height: 10px;
+      border-radius: 999px;
+      width: 91%;
+    }
+
+    /* Status badge */
+    .status {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: 0.9rem;
+      margin: 14px 0 6px;
+    }
+    .status.struggling { background: #fde8e8; color: #b91c1c; }
+    .status.thriving   { background: #d1fae5; color: #065f46; }
+
+    /* Action plan */
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .action-item {
+      background: #eef4eb;
+      border-radius: 6px;
+      padding: 10px;
+      text-align: center;
+      font-size: 0.8rem;
+    }
+    .action-item .icon { font-size: 1.3rem; display: block; margin-bottom: 4px; }
+    .action-item.alert { background: #fde8e8; }
+
+    /* System command */
+    .command-box {
+      margin-top: 12px;
+      background: #fff7ed;
+      border-left: 4px solid #f97316;
+      padding: 10px 14px;
+      border-radius: 0 6px 6px 0;
+      font-weight: bold;
+      font-size: 0.9rem;
+      color: #c2410c;
+    }
+
+    /* Log table */
+    .full-width {
+      grid-column: 1 / -1;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    th {
+      background: #eef4eb;
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 2px solid #dde8da;
+      color: #2d6a4f;
+    }
+    td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; }
+    tr:last-child td { border-bottom: none; }
+    .tag-struggling { color: #b91c1c; font-weight: bold; }
+    .tag-thriving   { color: #065f46; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Demeter — Plant Health Assessment System</h1>
+    <p>CNN species classification &middot; Random Forest stress diagnosis &middot; Actionable recommendations</p>
+  </header>
+
+  <main>
+
+    <!-- LEFT: Input -->
+    <div class="card">
+      <h2>Image Input</h2>
+      <div class="image-box">[ Plant image preview ]</div>
+      <button class="upload-btn">Upload Image</button>
+
+      <div class="sensors">
+        <div class="metric">
+          <div class="label">Temperature</div>
+          <div class="value">24.5 °C</div>
+        </div>
+        <div class="metric">
+          <div class="label">Soil Moisture</div>
+          <div class="value">32 %</div>
+        </div>
+        <div class="metric">
+          <div class="label">Sunlight Hours</div>
+          <div class="value">4.8 hrs</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Results -->
+    <div class="card">
+      <h2>Classification</h2>
+      <div class="species-row">
+        <span class="species-name">Tomato</span>
+        <span class="confidence">Confidence: 91%</span>
+      </div>
+      <div class="progress-bar-bg"><div class="progress-bar-fill"></div></div>
+
+      <div class="status struggling">Struggling</div>
+
+      <h2 style="margin-top:16px;">Action Plan</h2>
+      <div class="actions">
+        <div class="action-item alert">
+          <span class="icon">💧</span>Needs Water
+        </div>
+        <div class="action-item alert">
+          <span class="icon">🌱</span>Needs Fertilizer
+        </div>
+        <div class="action-item alert">
+          <span class="icon">☀️</span>Needs Sunlight
+        </div>
+      </div>
+
+      <div class="command-box">System Command: ACTIVATE_WATER_PUMP</div>
+    </div>
+
+    <!-- BOTTOM: Log -->
+    <div class="card full-width">
+      <h2>Diagnostic Log</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Species</th>
+            <th>Status</th>
+            <th>Moisture (%)</th>
+            <th>Temp (°C)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>2026-04-22 10:00</td><td>Tomato</td><td class="tag-thriving">Thriving</td><td>55.0</td><td>22.0</td></tr>
+          <tr><td>2026-04-22 11:00</td><td>Tomato</td><td class="tag-thriving">Thriving</td><td>50.0</td><td>22.5</td></tr>
+          <tr><td>2026-04-22 12:00</td><td>Tomato</td><td class="tag-thriving">Thriving</td><td>44.0</td><td>23.0</td></tr>
+          <tr><td>2026-04-22 13:00</td><td>Tomato</td><td class="tag-struggling">Struggling</td><td>38.0</td><td>24.0</td></tr>
+          <tr><td>2026-04-22 14:00</td><td>Tomato</td><td class="tag-struggling">Struggling</td><td>32.0</td><td>24.5</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+</body>
+</html>
