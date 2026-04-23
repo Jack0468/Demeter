@@ -2,12 +2,7 @@
 # DEMETER PROJECT SPECIFIC
 # ==========================================
 # Ignore downloaded Kaggle datasets (Images and Tabular data)
-data/raw_images/
-data/tabular/
-data/rgb_species/
-data/rgb_health/
-data/thermal_stress/
-
+data/
 # Ignore generated log files (keep the data folder clean)
 data/*.csv
 
