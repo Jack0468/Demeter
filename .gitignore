@@ -54,3 +54,4 @@ $RECYCLE.BIN/
 # VS Code / PyCharm settings
 .vscode/
 .idea/
+Demeter.code-workspace
