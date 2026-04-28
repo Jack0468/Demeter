@@ -5,7 +5,7 @@ import tensorflow as tf
 import requests
 
 def expand_demeter_datasets():
-    print("🌾 Starting Dataset Expansion Pipeline...\n")
+    print("Starting Dataset Expansion Pipeline...\n")
     
     # 1. Setup local directories (Consistent with existing architecture)
     base_data_dir = os.path.join(os.getcwd(), 'data')
@@ -24,7 +24,7 @@ def expand_demeter_datasets():
         shutil.copytree(disease_path, disease_dir, dirs_exist_ok=True)
         print(f"✅ Disease dataset ready at: {disease_dir}\n")
     except Exception as e:
-        print(f"❌ Error downloading Kaggle disease data: {e}")
+        print(f"Error downloading Kaggle disease data: {e}")
 
     # --- 2. Molecular Plant: Supplemental Data ---
     # Note: Journal datasets often require direct HTTP requests or manual download

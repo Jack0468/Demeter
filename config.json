@@ -3,9 +3,15 @@
     "cnn_model": "models/demeter_cnn.keras",
     "rf_model": "models/demeter_rf.joblib",
     "csv_log": "data/plant_diagnostics.csv",
-    "bellwether_images_dir": "/mnt/c/Users/Admin/Downloads/fahlgren_et_al_2015_bellwether_jpeg/images"  },
+    "bellwether_images_dir": "/mnt/c/Users/Admin/Downloads/fahlgren_et_al_2015_bellwether_jpeg/images"
+  },
   "training": {
-    "force_retrain": true,
-    "epochs": 5
+    "epochs": 5,
+    "models": {
+      "plantvillage_cnn": false,
+      "danforth_rf": true,
+      "bellwether_cnn": false,
+      "bellwether_rf": false
+    }
   }
 }

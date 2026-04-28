@@ -2,9 +2,10 @@ import time
 import os
 import glob
 import json
+import pickle
 import pandas as pd
 from inference_engine import load_models, analyze_plant_status, log_to_csv
-from model_builder import train_and_save_cnn, train_and_save_rf # Now active!
+from model_builder import train_and_save_cnn, train_and_save_rf, train_and_save_cnn_plantvillage, train_and_save_rf_danforth # Now active!
 
 # --- CONFIGURATION LOADING ---
 try:
@@ -14,12 +15,25 @@ except FileNotFoundError:
     print("[!] ERROR: config.json not found.")
     exit(1)
 
-TRAIN_MODEL = config['training']['force_retrain']
+TRAIN_MODEL = config['training'].get('force_retrain', False)  # Legacy support
+
+# New granular model retraining flags
+train_plantvillage_cnn = config['training']['models'].get('plantvillage_cnn', False)
+train_danforth_rf = config['training']['models'].get('danforth_rf', False)
+train_bellwether_cnn = config['training']['models'].get('bellwether_cnn', False)
+train_bellwether_rf = config['training']['models'].get('bellwether_rf', False)
 
 cnn_model_path = config['paths']['cnn_model']
 rf_model_path = config['paths']['rf_model']
 csv_log_path = config['paths']['csv_log']
 bellwether_dir = config['paths']['bellwether_images_dir']
+metadata_cache_path = "data/metadata_cache.pkl"
+
+# Paths for new dataset-specific models
+plantvillage_dir = "data/layer2_health_rgb/PlantVillage"
+danforth_csv_path = "data/layer3_environment/plant_growth_data.csv"
+plantvillage_cnn_model_path = "models/demeter_cnn_plantvillage.keras"
+danforth_rf_model_path = "models/demeter_rf_danforth.joblib"
 
 
 def load_bellwether_metadata(base_dir):
@@ -55,29 +69,66 @@ def load_bellwether_metadata(base_dir):
     return merged_df
 
 
+def save_metadata_cache(metadata_df, cache_path):
+    """Saves processed metadata dataframe to pickle for quick reuse."""
+    os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+    with open(cache_path, 'wb') as f:
+        pickle.dump(metadata_df, f)
+    print(f"Metadata cache saved to {cache_path}")
+
+
+def load_metadata_cache(cache_path):
+    """Loads cached metadata dataframe if available."""
+    if os.path.exists(cache_path):
+        with open(cache_path, 'rb') as f:
+            metadata_df = pickle.load(f)
+        print(f"Loaded metadata from cache: {cache_path}")
+        return metadata_df
+    return None
+
+
 def main():
     print("Starting Demeter Software Pipeline...")
     
-    # 1. LOAD METADATA
-    metadata_df = load_bellwether_metadata(bellwether_dir)
-    if metadata_df is None or metadata_df.empty:
-        print("Failed to load metadata. Exiting.")
-        return
-        
+    # 1. LOAD METADATA (with caching)
+    metadata_df = load_metadata_cache(metadata_cache_path)
+    if metadata_df is None:
+        metadata_df = load_bellwether_metadata(bellwether_dir)
+        if metadata_df is None or metadata_df.empty:
+            print("Failed to load metadata. Exiting.")
+            return
+        save_metadata_cache(metadata_df, metadata_cache_path)
+    
     print(f"Successfully linked {len(metadata_df)} image records with plant data.\n")
 
     # --- TRAINING CHECK ---
-    # Now correctly passes the pandas dataframe and directory to the updated builder functions
-    if not os.path.exists(cnn_model_path) or not os.path.exists(rf_model_path) or TRAIN_MODEL:
-        print("\n[!] Models not found or retrain forced. Initiating training sequence...")
-        
-        if not os.path.exists(cnn_model_path) or TRAIN_MODEL:
-            train_and_save_cnn(metadata_df, bellwether_dir, cnn_model_path, epochs=config['training']['epochs'])
-            
-        if not os.path.exists(rf_model_path) or TRAIN_MODEL:
-            train_and_save_rf(metadata_df, rf_model_path)
-            
-        print("[!] Training complete.\n")
+    # Train PlantVillage CNN for disease classification
+    if not os.path.exists(plantvillage_cnn_model_path) or train_plantvillage_cnn:
+        print("\n[!] PlantVillage CNN not found or retrain forced. Training...")
+        train_and_save_cnn_plantvillage(
+            plantvillage_dir, 
+            plantvillage_cnn_model_path, 
+            epochs=config['training']['epochs']
+        )
+        print("[!] PlantVillage CNN training complete.\n")
+    
+    # Train Danforth RF for growth prediction
+    if not os.path.exists(danforth_rf_model_path) or train_danforth_rf:
+        print("\n[!] Danforth RF not found or retrain forced. Training...")
+        train_and_save_rf_danforth(danforth_csv_path, danforth_rf_model_path)
+        print("[!] Danforth RF training complete.\n")
+    
+    # Train original Bellwether CNN for water stress (optional/legacy)
+    if not os.path.exists(cnn_model_path) or train_bellwether_cnn:
+        print("\n[!] Bellwether CNN not found or retrain forced. Training...")
+        train_and_save_cnn(metadata_df, bellwether_dir, cnn_model_path, epochs=config['training']['epochs'])
+        print("[!] Bellwether CNN training complete.\n")
+    
+    # Train original Bellwether RF (optional/legacy)
+    if not os.path.exists(rf_model_path) or train_bellwether_rf:
+        print("\n[!] Bellwether RF not found or retrain forced. Training...")
+        train_and_save_rf(metadata_df, rf_model_path)
+        print("[!] Bellwether RF training complete.\n")
 
     # --- INFERENCE PIPELINE ---
     print("Loading AI Models...")

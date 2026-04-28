@@ -32,9 +32,9 @@ def analyze_plant_status(image_path, water_amount, weight, cnn_model, rf_model, 
     # ==========================================
     # 2. Determine Needs (Random Forest)
     # ==========================================
-    # The RF was trained in model_builder.py purely on 'weight before' 
-    # to predict if the plant needed water (1 = Yes, 0 = No).
-    sensor_data = np.array([[weight]])
+    # The RF was trained in model_builder.py on ['weight before', 'water amount']
+    # to predict future growth (weight after).
+    sensor_data = np.array([[weight, water_amount]])
     
     rf_prediction = rf_model.predict(sensor_data)[0] 
     
