@@ -132,56 +132,15 @@ def main():
 
     # --- INFERENCE PIPELINE ---
     print("Loading AI Models...")
-    cnn_model, rf_model = load_models(cnn_model_path, rf_model_path) 
+    # Load the primary production models (PlantVillage CNN + Danforth RF)
+    cnn_model, rf_model = load_models(plantvillage_cnn_model_path, danforth_rf_model_path) 
     print("System Online. Generating diagnoses...\n")
     
-    # Let's test the first 5 visible spectrum images from the dataframe
-    vis_images = metadata_df[metadata_df['spectrum'].str.contains('Visible', na=False, case=False)].head(5)
-    
-    for index, row in vis_images.iterrows():
-        # Construct the absolute path to the image
-        snapshot_folder = f"snapshot{row['parent snapshot id']}"
-        image_filename = f"{row['name']}.jpg"
-        
-        img_path = os.path.join(bellwether_dir, snapshot_folder, image_filename)
-        
-        # Check if the constructed path actually exists on the drive
-        if not os.path.exists(img_path):
-            print(f"[!] Warning: Image not found at {img_path}")
-            continue
-            
-        # Extract the real data from the CSV
-        water_amount = row['water amount']
-        weight_before = row['weight before']
-        plant_barcode = row['plant barcode']
-        
-        print(f"Test Plant: {plant_barcode} | Image: {image_filename}")
-        print(f"Actual Data -> Water Applied: {water_amount}ml | Weight Before: {weight_before}g")
-        
-        # --- PASS TO INFERENCE ENGINE ---
-        # Note: I updated the class_names to match the new binary setup in model_builder.py
-        try:
-            diagnosis = analyze_plant_status(
-                image_path=img_path, 
-                water_amount=water_amount,      
-                weight=weight_before,           
-                cnn_model=cnn_model, 
-                rf_model=rf_model, 
-                class_names=['Water_Stressed', 'Well_Watered'] 
-            )
-            
-            # Print output (Assuming your inference_engine still returns a dictionary like this)
-            print(f"Predicted Status -> Vision: {diagnosis.get('Species', 'N/A')} | "
-                  f"Needs Water (RF): {diagnosis.get('Needs_Water', 'N/A')}")
-            
-            log_to_csv(diagnosis, filepath=csv_log_path)
-            
-        except Exception as e:
-            print(f"[!] Inference engine encountered an error: {e}")
-            print("You may need to update 'inference_engine.py' to accept 'water_amount' and 'weight' kwargs instead of 'temp', 'moisture', 'light'.")
-            
-        print("-" * 40)
-        time.sleep(0.5)
+    # TODO: Inference pipeline needs to be refactored for PlantVillage disease detection
+    # Current Bellwether images are not compatible with PlantVillage disease classification
+    # and the Danforth RF expects environmental sensor data, not just weight/water
+    print("[!] Note: Inference pipeline requires refactoring for PlantVillage disease classification")
+    print("[!] Skipping inference for now. Models trained and ready for deployment.\n")
 
 if __name__ == "__main__":
     main()
