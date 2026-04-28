@@ -14,6 +14,73 @@ def load_models(cnn_path, rf_path):
     rf_model = joblib.load(rf_path)
     return cnn_model, rf_model
 
+# ==========================================
+# PLANTVILLAGE DISEASE CLASSIFICATION
+# ==========================================
+def diagnose_plant_disease(image_path, cnn_model, class_names):
+    """
+    Classifies plant disease from image using PlantVillage CNN.
+    
+    Args:
+        image_path: Path to plant image
+        cnn_model: Trained CNN model
+        class_names: List of disease class names
+        
+    Returns:
+        Dictionary with disease prediction and confidence
+    """
+    img = tf.keras.utils.load_img(image_path, target_size=(150, 150))
+    img_array = tf.keras.utils.img_to_array(img)
+    img_array = tf.expand_dims(img_array, 0)
+    
+    predictions = cnn_model.predict(img_array, verbose=0)
+    disease_idx = np.argmax(predictions[0])
+    detected_disease = class_names[disease_idx]
+    confidence = float(predictions[0][disease_idx])
+    
+    result = {
+        "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "Image_Path": image_path,
+        "Detected_Disease": detected_disease,
+        "Disease_Confidence": round(confidence, 4),
+        "All_Predictions": {class_names[i]: float(predictions[0][i]) for i in range(len(class_names))}
+    }
+    
+    return result
+
+# ==========================================
+# DANFORTH GROWTH PREDICTION
+# ==========================================
+def predict_growth_milestone(environmental_data, rf_model):
+    """
+    Predicts plant growth milestone from environmental sensor data using Danforth RF.
+    
+    Args:
+        environmental_data: Dict with keys: Soil_Type, Sunlight_Hours, Water_Frequency,
+                           Fertilizer_Type, Temperature, Humidity (encoded as integers)
+        rf_model: Trained Random Forest Regressor
+        
+    Returns:
+        Dictionary with growth prediction
+    """
+    # Expected feature order from training: 
+    # ['Soil_Type', 'Sunlight_Hours', 'Water_Frequency', 'Fertilizer_Type', 'Temperature', 'Humidity']
+    feature_order = ['Soil_Type', 'Sunlight_Hours', 'Water_Frequency', 'Fertilizer_Type', 'Temperature', 'Humidity']
+    features = np.array([[environmental_data.get(feat, 0) for feat in feature_order]])
+    
+    growth_prediction = float(rf_model.predict(features)[0])
+    
+    result = {
+        "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "Predicted_Growth_Milestone": round(growth_prediction, 4),
+        "Environmental_Input": environmental_data
+    }
+    
+    return result
+
+# ==========================================
+# LEGACY: BELLWETHER WATER STRESS ANALYSIS
+# ==========================================
 def analyze_plant_status(image_path, water_amount, weight, cnn_model, rf_model, class_names):
     """Runs the full pipeline: Image classification + Random Forest logic."""
     

@@ -4,7 +4,7 @@ import glob
 import json
 import pickle
 import pandas as pd
-from inference_engine import load_models, analyze_plant_status, log_to_csv
+from inference_engine import load_models, analyze_plant_status, log_to_csv, diagnose_plant_disease, predict_growth_milestone
 from model_builder import train_and_save_cnn, train_and_save_rf, train_and_save_cnn_plantvillage, train_and_save_rf_danforth # Now active!
 
 # --- CONFIGURATION LOADING ---
@@ -136,11 +136,95 @@ def main():
     cnn_model, rf_model = load_models(plantvillage_cnn_model_path, danforth_rf_model_path) 
     print("System Online. Generating diagnoses...\n")
     
-    # TODO: Inference pipeline needs to be refactored for PlantVillage disease detection
-    # Current Bellwether images are not compatible with PlantVillage disease classification
-    # and the Danforth RF expects environmental sensor data, not just weight/water
-    print("[!] Note: Inference pipeline requires refactoring for PlantVillage disease classification")
-    print("[!] Skipping inference for now. Models trained and ready for deployment.\n")
+    # ==========================================
+    # 1. PlantVillage Disease Classification Demo
+    # ==========================================
+    print("=" * 60)
+    print("PLANTVILLAGE DISEASE CLASSIFICATION TEST")
+    print("=" * 60)
+    
+    # Scan PlantVillage for test images
+    test_count = 0
+    max_tests = 5
+    
+    for disease_class in sorted(os.listdir(plantvillage_dir)):
+        if test_count >= max_tests:
+            break
+            
+        class_path = os.path.join(plantvillage_dir, disease_class)
+        if not os.path.isdir(class_path):
+            continue
+        
+        # Get first image from this disease class
+        image_files = [f for f in os.listdir(class_path) 
+                      if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+        
+        if image_files:
+            image_file = image_files[0]
+            image_path = os.path.join(class_path, image_file)
+            
+            try:
+                # Get class names from PlantVillage model
+                from model_builder import train_and_save_cnn_plantvillage
+                class_dirs = sorted([d for d in os.listdir(plantvillage_dir) 
+                                   if os.path.isdir(os.path.join(plantvillage_dir, d))])
+                
+                diagnosis = diagnose_plant_disease(image_path, cnn_model, class_dirs)
+                
+                print(f"\nTest {test_count + 1}: {disease_class}")
+                print(f"Image: {image_file}")
+                print(f"Detected Disease: {diagnosis['Detected_Disease']} (Confidence: {diagnosis['Disease_Confidence']:.2%})")
+                
+                log_to_csv(diagnosis, filepath=csv_log_path)
+                test_count += 1
+                
+            except Exception as e:
+                print(f"[!] Error processing {image_file}: {e}")
+    
+    print("\n" + "=" * 60)
+    print("DANFORTH GROWTH PREDICTION TEST")
+    print("=" * 60)
+    
+    # ==========================================
+    # 2. Danforth Growth Prediction Demo
+    # ==========================================
+    # Sample environmental conditions for testing
+    sample_conditions = [
+        {
+            "Soil_Type": 1,  # encoded
+            "Sunlight_Hours": 6.0,
+            "Water_Frequency": 2,  # encoded
+            "Fertilizer_Type": 1,  # encoded
+            "Temperature": 25.0,
+            "Humidity": 65.0
+        },
+        {
+            "Soil_Type": 0,  # encoded
+            "Sunlight_Hours": 4.0,
+            "Water_Frequency": 0,  # encoded
+            "Fertilizer_Type": 0,  # encoded
+            "Temperature": 20.0,
+            "Humidity": 55.0
+        }
+    ]
+    
+    for idx, env_data in enumerate(sample_conditions):
+        try:
+            growth_pred = predict_growth_milestone(env_data, rf_model)
+            
+            print(f"\nCondition Set {idx + 1}:")
+            print(f"  Temperature: {env_data['Temperature']}°C, Humidity: {env_data['Humidity']}%")
+            print(f"  Sunlight: {env_data['Sunlight_Hours']} hours")
+            print(f"  Predicted Growth Milestone: {growth_pred['Predicted_Growth_Milestone']:.4f}")
+            
+            log_to_csv(growth_pred, filepath=csv_log_path)
+            
+        except Exception as e:
+            print(f"[!] Error with growth prediction: {e}")
+    
+    print("\n" + "=" * 60)
+    print("[✓] Inference pipeline complete. Results logged to CSV.")
+    print("=" * 60)
 
 if __name__ == "__main__":
     main()
