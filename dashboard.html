@@ -156,9 +156,313 @@
     tr:last-child td { border-bottom: none; }
     .tag-struggling { color: #b91c1c; font-weight: bold; }
     .tag-thriving   { color: #065f46; font-weight: bold; }
+    /* Status badge critical */
+    .status.critical { background: #fee2e2; color: #7f1d1d; }
+
+    /* Loading spinner */
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #eee;
+      border-top: 2px solid #2d6a4f;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* API status indicator */
+    .api-status {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      z-index: 1000;
+    }
+    .api-status.online { background: #d1fae5; color: #065f46; }
+    .api-status.offline { background: #fde8e8; color: #b91c1c; }
+
+    /* Info box */
+    .info-box {
+      background: #e8f3ff;
+      border-left: 4px solid #0284c7;
+      padding: 10px 14px;
+      border-radius: 0 4px 4px 0;
+      font-size: 0.85rem;
+      color: #0c4a6e;
+      margin-bottom: 12px;
+    }
   </style>
+  <script>
+    // API Configuration
+    const API_BASE = window.location.origin + '/api';
+    const REFRESH_INTERVAL = 5000; // 5 seconds
+
+    // Global state
+    let currentDiagnosis = null;
+    let isApiOnline = false;
+
+    // ============================
+    // API Communication Functions
+    // ============================
+
+    async function checkApiHealth() {
+      try {
+        const response = await fetch(API_BASE + '/health', { method: 'GET' });
+        isApiOnline = response.ok;
+        updateApiStatus();
+        return response.ok;
+      } catch (err) {
+        isApiOnline = false;
+        updateApiStatus();
+        return false;
+      }
+    }
+
+    async function fetchLatestDiagnosis() {
+      try {
+        const response = await fetch(API_BASE + '/latest');
+        if (!response.ok) {
+          if (response.status === 404) {
+            console.log('No diagnosis available yet');
+            return null;
+          }
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        currentDiagnosis = data;
+        return data;
+      } catch (err) {
+        console.error('Error fetching latest diagnosis:', err);
+        return null;
+      }
+    }
+
+    async function fetchDiagnosisHistory(limit = 20) {
+      try {
+        const response = await fetch(API_BASE + `/history?limit=${limit}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        return data.records || [];
+      } catch (err) {
+        console.error('Error fetching history:', err);
+        return [];
+      }
+    }
+
+    // ============================
+    // UI Update Functions
+    // ============================
+
+    function updateApiStatus() {
+      const indicator = document.getElementById('api-status');
+      if (indicator) {
+        indicator.className = `api-status ${isApiOnline ? 'online' : 'offline'}`;
+        indicator.textContent = isApiOnline ? '● Online' : '● Offline';
+      }
+    }
+
+    function updateSensorMetrics(sensors) {
+      if (!sensors) return;
+
+      const temperature = document.querySelector('[data-metric="temperature"] .value');
+      if (temperature && sensors.temperature !== undefined) {
+        temperature.textContent = sensors.temperature.toFixed(1) + ' °C';
+      }
+
+      const moisture = document.querySelector('[data-metric="moisture"] .value');
+      if (moisture && sensors.soil_moisture !== undefined) {
+        moisture.textContent = sensors.soil_moisture.toFixed(1) + ' %';
+      }
+
+      const sunlight = document.querySelector('[data-metric="sunlight"] .value');
+      if (sunlight && sensors.sunlight_hours !== undefined) {
+        sunlight.textContent = sensors.sunlight_hours.toFixed(1) + ' hrs';
+      }
+    }
+
+    function updateDiseaseDetection(cnnResult) {
+      if (!cnnResult) return;
+
+      const disease = document.querySelector('[data-section="disease-name"]');
+      if (disease) {
+        disease.textContent = cnnResult.primary_disease || 'Unknown';
+      }
+
+      const conf = document.querySelector('[data-section="disease-confidence"]');
+      if (conf) {
+        const percentage = (cnnResult.confidence * 100).toFixed(0);
+        conf.textContent = `Disease confidence: ${percentage}%`;
+      }
+
+      const bar = document.querySelector('[data-section="disease-bar"]');
+      if (bar) {
+        const width = (cnnResult.confidence * 100).toFixed(0);
+        bar.style.width = width + '%';
+        bar.style.background = cnnResult.confidence > 0.7 ? '#b91c1c' : '#f97316';
+      }
+    }
+
+    function updateOverallStatus(diagnosis) {
+      if (!diagnosis) return;
+
+      const status = document.querySelector('[data-section="overall-status"]');
+      if (status && diagnosis.overall_status) {
+        status.className = `status ${diagnosis.overall_status.toLowerCase()}`;
+        status.textContent = `Overall Status: ${diagnosis.overall_status}`;
+      }
+
+      const score = document.querySelector('[data-section="health-score"]');
+      if (score && diagnosis.health_score !== undefined) {
+        score.textContent = `Health Score: ${diagnosis.health_score}/100`;
+      }
+    }
+
+    function updateStressDiagnosis(stressDiag) {
+      if (!stressDiag) return;
+
+      const metrics = {
+        'moisture': stressDiag.moisture_stress,
+        'temperature': stressDiag.temperature_stress,
+        'light': stressDiag.light_deficit,
+        'nutrient': stressDiag.nutrient_status
+      };
+
+      for (const [key, value] of Object.entries(metrics)) {
+        const elem = document.querySelector(`[data-stress="${key}"] .value`);
+        if (elem) {
+          elem.textContent = value || 'Unknown';
+          // Apply color coding
+          const metric = document.querySelector(`[data-stress="${key}"]`);
+          if (metric) {
+            metric.style.background = value === 'High' ? '#fde8e8' : '#eef4eb';
+            if (elem) {
+              elem.style.color = value === 'High' ? '#b91c1c' : '#2d6a4f';
+            }
+          }
+        }
+      }
+    }
+
+    function updateRecommendations(recommendations) {
+      if (!recommendations) return;
+
+      const container = document.querySelector('[data-section="recommendations"]');
+      if (!container) return;
+
+      container.innerHTML = recommendations.slice(0, 3).map(rec => `
+        <div class="action-item${rec.urgency === 'critical' ? ' alert' : ''}">
+          <span class="icon">${rec.icon || '→'}</span>
+          ${rec.action}
+        </div>
+      `).join('');
+    }
+
+    function updateSystemCommand(command) {
+      if (!command) return;
+
+      const elem = document.querySelector('[data-section="system-command"]');
+      if (elem) {
+        elem.textContent = `System Command: ${command}`;
+      }
+    }
+
+    function updateTrajectory(trajectory) {
+      if (!trajectory) return;
+
+      const days = [3, 5, 7];
+      days.forEach(day => {
+        const elem = document.querySelector(`[data-trajectory-day="${day}"] .value`);
+        if (elem) {
+          elem.textContent = trajectory[day] || 'Unknown';
+          // Color coding
+          const color = trajectory[day] === 'Thriving' ? '#065f46' :
+                       trajectory[day] === 'Fair' ? '#b45309' : '#b91c1c';
+          elem.style.color = color;
+        }
+      });
+    }
+
+    function populateDiagnosisLog(history) {
+      if (!history || history.length === 0) return;
+
+      const tbody = document.querySelector('[data-section="log-table"] tbody');
+      if (!tbody) return;
+
+      // Build rows from history (latest first)
+      const rows = history.reverse().slice(0, 10).map(record => {
+        const timestamp = new Date(record.timestamp).toLocaleString();
+        const disease = record.cnn_result?.primary_disease || 'None';
+        const status = record.overall_status || 'Unknown';
+        const moisture = record.sensors?.soil_moisture?.toFixed(1) || '--';
+        const temp = record.sensors?.temperature?.toFixed(1) || '--';
+
+        return `
+          <tr>
+            <td>${timestamp}</td>
+            <td>Plant</td>
+            <td>${disease}</td>
+            <td class="tag-${status.toLowerCase()}">${status}</td>
+            <td>${moisture}</td>
+            <td>${temp}</td>
+          </tr>
+        `;
+      }).join('');
+
+      tbody.innerHTML = rows;
+    }
+
+    // ============================
+    // Main Refresh Function
+    // ============================
+
+    async function refreshDashboard() {
+      await checkApiHealth();
+      
+      if (!isApiOnline) {
+        console.warn('API is offline, skipping dashboard update');
+        return;
+      }
+
+      const diagnosis = await fetchLatestDiagnosis();
+      if (!diagnosis) {
+        console.log('No diagnosis to display yet');
+        return;
+      }
+
+      // Update all sections
+      updateSensorMetrics(diagnosis.sensors);
+      updateDiseaseDetection(diagnosis.cnn_result);
+      updateOverallStatus(diagnosis);
+      updateStressDiagnosis(diagnosis.stress_diagnosis);
+      updateRecommendations(diagnosis.recommendations);
+      updateSystemCommand(diagnosis.system_command);
+      updateTrajectory(diagnosis.trajectory_7day);
+
+      // Update log with history
+      const history = await fetchDiagnosisHistory(10);
+      populateDiagnosisLog(history);
+    }
+
+    // ============================
+    // Initialization
+    // ============================
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Initial check
+      await checkApiHealth();
+      await refreshDashboard();
+
+      // Set up periodic refresh
+      setInterval(refreshDashboard, REFRESH_INTERVAL);
+    });
+  </script>
 </head>
 <body>
+
+  <div id="api-status" class="api-status offline">● Checking...</div>
 
   <header>
     <h1>Demeter — Plant Health Management</h1>
@@ -175,17 +479,17 @@
 
       <h2 style="margin-top:18px;">Environmental Sensors</h2>
       <div class="sensors">
-        <div class="metric">
+        <div class="metric" data-metric="temperature">
           <div class="label">Temperature</div>
-          <div class="value">24.5 °C</div>
+          <div class="value">-- °C</div>
         </div>
-        <div class="metric">
+        <div class="metric" data-metric="moisture">
           <div class="label">Soil Moisture</div>
-          <div class="value">32 %</div>
+          <div class="value">-- %</div>
         </div>
-        <div class="metric">
+        <div class="metric" data-metric="sunlight">
           <div class="label">Sunlight Hours</div>
-          <div class="value">4.8 hrs</div>
+          <div class="value">-- hrs</div>
         </div>
       </div>
     </div>
@@ -195,49 +499,42 @@
       <h2>CNN — Disease Detection</h2>
       <div style="margin-top:4px;">
         <div class="species-row">
-          <span style="font-weight:bold;">Early Blight detected</span>
-          <span class="confidence">Disease confidence: 84%</span>
+          <span style="font-weight:bold;" data-section="disease-name">Loading...</span>
+          <span class="confidence" data-section="disease-confidence">Disease confidence: --</span>
         </div>
-        <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:84%; background:#b91c1c;"></div></div>
+        <div class="progress-bar-bg"><div class="progress-bar-fill" data-section="disease-bar" style="width:0%; background:#ccc;"></div></div>
       </div>
 
-      <div class="status struggling" style="margin-top:14px;">Overall Status: Struggling</div>
+      <div class="status" style="margin-top:14px;" data-section="overall-status">Overall Status: --</div>
+      <div style="font-size: 0.85rem; color: #555; margin-top: 4px;" data-section="health-score">Health Score: --</div>
 
       <h2 style="margin-top:16px;">Actionable Recommendations</h2>
-      <div class="actions">
-        <div class="action-item alert">
-          <span class="icon">💧</span>Increase watering frequency
-        </div>
-        <div class="action-item alert">
-          <span class="icon">🍂</span>Remove affected leaves
-        </div>
-        <div class="action-item alert">
-          <span class="icon">🧪</span>Apply fungicide
-        </div>
+      <div class="actions" data-section="recommendations">
+        <div class="action-item"><span class="icon">⏳</span>Loading...</div>
       </div>
 
-      <div class="command-box">System Command: ACTIVATE_WATER_PUMP</div>
+      <div class="command-box" data-section="system-command">System Command: MONITORING</div>
     </div>
 
     <!-- MIDDLE: Stress Diagnosis + Growth Trajectory -->
     <div class="card">
       <h2>Stress Diagnosis</h2>
       <div class="sensors" style="grid-template-columns: 1fr 1fr; gap:10px;">
-        <div class="metric" style="background:#fde8e8;">
+        <div class="metric" data-stress="moisture">
           <div class="label">Moisture Stress</div>
-          <div class="value" style="color:#b91c1c;">High</div>
+          <div class="value">--</div>
         </div>
-        <div class="metric">
+        <div class="metric" data-stress="temperature">
           <div class="label">Temperature Stress</div>
-          <div class="value">Low</div>
+          <div class="value">--</div>
         </div>
-        <div class="metric" style="background:#fde8e8;">
+        <div class="metric" data-stress="light">
           <div class="label">Light Deficit</div>
-          <div class="value" style="color:#b91c1c;">Moderate</div>
+          <div class="value">--</div>
         </div>
-        <div class="metric">
+        <div class="metric" data-stress="nutrient">
           <div class="label">Nutrient Status</div>
-          <div class="value">Normal</div>
+          <div class="value">--</div>
         </div>
       </div>
     </div>
@@ -246,26 +543,26 @@
       <h2>Growth Trajectory Prediction</h2>
       <div style="margin-bottom:10px; font-size:0.85rem; color:#555;">Projected next 7 days based on current sensor readings</div>
       <div class="sensors" style="grid-template-columns: 1fr 1fr 1fr; gap:10px;">
-        <div class="metric">
+        <div class="metric" data-trajectory-day="3">
           <div class="label">Day 3</div>
-          <div class="value" style="color:#b45309;">Fair</div>
+          <div class="value">--</div>
         </div>
-        <div class="metric">
+        <div class="metric" data-trajectory-day="5">
           <div class="label">Day 5</div>
-          <div class="value" style="color:#b91c1c;">Poor</div>
+          <div class="value">--</div>
         </div>
-        <div class="metric">
+        <div class="metric" data-trajectory-day="7">
           <div class="label">Day 7</div>
-          <div class="value" style="color:#b91c1c;">Poor</div>
+          <div class="value">--</div>
         </div>
       </div>
       <div style="margin-top:14px; font-size:0.82rem; background:#fff7ed; border-left:3px solid #f97316; padding:8px 12px; border-radius:0 4px 4px 0; color:#92400e;">
-        Trajectory will improve if moisture is restored to &ge;50% within 24 hrs.
+        💡 Diagnosis updates every 5 seconds. Run <code>main.py</code> to generate new predictions.
       </div>
     </div>
 
     <!-- BOTTOM: Log -->
-    <div class="card full-width">
+    <div class="card full-width" data-section="log-table">
       <h2>Diagnostic Log</h2>
       <table>
         <thead>
@@ -279,11 +576,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr><td>2026-04-22 10:00</td><td>Plant</td><td>None</td><td class="tag-thriving">Thriving</td><td>55.0</td><td>22.0</td></tr>
-          <tr><td>2026-04-22 11:00</td><td>Plant</td><td>None</td><td class="tag-thriving">Thriving</td><td>50.0</td><td>22.5</td></tr>
-          <tr><td>2026-04-22 12:00</td><td>Plant</td><td>None</td><td class="tag-thriving">Thriving</td><td>44.0</td><td>23.0</td></tr>
-          <tr><td>2026-04-22 13:00</td><td>Plant</td><td>Early Blight</td><td class="tag-struggling">Struggling</td><td>38.0</td><td>24.0</td></tr>
-          <tr><td>2026-04-22 14:00</td><td>Plant</td><td>Early Blight</td><td class="tag-struggling">Struggling</td><td>32.0</td><td>24.5</td></tr>
+          <tr><td colspan="6" style="text-align:center; color:#999;">Loading diagnostic history...</td></tr>
         </tbody>
       </table>
     </div>

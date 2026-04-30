@@ -1,9 +1,16 @@
 import os
 import csv
+import json
+import sys
 import numpy as np
 import tensorflow as tf
 import joblib
 from datetime import datetime
+from pathlib import Path
+
+# Import our new modules
+from output_formatter import OutputFormatter
+from status_engine import StatusEngine
 
 def load_models(cnn_path, rf_path):
     """Loads both the pre-trained CNN and Random Forest models."""
@@ -79,6 +86,77 @@ def predict_growth_milestone(environmental_data, rf_model):
     return result
 
 # ==========================================
+# ENHANCED: INTEGRATED DIAGNOSIS WITH STATUS ENGINE
+# ==========================================
+def generate_complete_diagnosis(
+    image_path,
+    detected_disease,
+    disease_confidence,
+    all_predictions,
+    predicted_growth,
+    temperature,
+    soil_moisture,
+    sunlight_hours,
+    humidity=None
+):
+    """
+    Generate a complete, dashboard-ready diagnosis combining all components.
+    
+    Args:
+        image_path: Path to plant image
+        detected_disease: Disease detected by CNN
+        disease_confidence: Confidence score (0-1)
+        all_predictions: Dict of all class predictions
+        predicted_growth: Growth prediction from RF
+        temperature: Temperature in Celsius
+        soil_moisture: Soil moisture percentage (0-100)
+        sunlight_hours: Sunlight hours per day
+        humidity: Optional humidity percentage
+        
+    Returns:
+        Complete diagnosis dict with status, recommendations, and system commands
+    """
+    # Initialize components
+    formatter = OutputFormatter()
+    status_engine = StatusEngine()
+    
+    # Format disease detection
+    disease_result = OutputFormatter.format_disease_detection(
+        image_path, detected_disease, disease_confidence, all_predictions
+    )
+    
+    # Format growth prediction
+    growth_result = OutputFormatter.format_growth_prediction(
+        predicted_growth, 
+        {"temperature": temperature, "humidity": humidity}
+    )
+    
+    # Format sensors
+    sensor_data = OutputFormatter.format_sensor_data(
+        temperature, soil_moisture, sunlight_hours, humidity
+    )
+    
+    # Merge formatted data
+    merged = formatter.merge_diagnosis(
+        disease_result, growth_result, sensor_data
+    )
+    
+    # Generate status and recommendations
+    full_diagnosis = status_engine.generate_full_diagnosis(
+        disease_confidence, detected_disease, soil_moisture,
+        temperature, sunlight_hours, predicted_growth, humidity
+    )
+    
+    # Merge everything
+    diagnosis = {**merged, **full_diagnosis}
+    
+    # Save outputs
+    formatter.save_latest(diagnosis)
+    formatter.append_history(diagnosis)
+    
+    return diagnosis
+
+# ==========================================
 # LEGACY: BELLWETHER WATER STRESS ANALYSIS
 # ==========================================
 def analyze_plant_status(image_path, water_amount, weight, cnn_model, rf_model, class_names):
@@ -127,11 +205,27 @@ def analyze_plant_status(image_path, water_amount, weight, cnn_model, rf_model, 
     return result
 
 def log_to_csv(data_dict, filepath="data/demeter_logs.csv"):
-    """Appends the result dictionary to a CSV file."""
+    """
+    Appends the result dictionary to a CSV file.
+    
+    Enhanced to handle nested dictionaries (e.g., All_Predictions, Environmental_Input)
+    by serializing them as JSON strings.
+    """
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    
+    # Flatten nested dictionaries for CSV
+    flat_dict = {}
+    for key, value in data_dict.items():
+        if isinstance(value, dict):
+            flat_dict[key] = json.dumps(value)
+        elif isinstance(value, list):
+            flat_dict[key] = json.dumps(value)
+        else:
+            flat_dict[key] = value
+    
     file_exists = os.path.isfile(filepath)
     with open(filepath, mode='a', newline='') as file:
-        writer = csv.DictWriter(file, fieldnames=data_dict.keys())
+        writer = csv.DictWriter(file, fieldnames=flat_dict.keys())
         if not file_exists:
             writer.writeheader()
-        writer.writerow(data_dict)
+        writer.writerow(flat_dict)

@@ -9,7 +9,7 @@
     "epochs": 5,
     "models": {
       "plantvillage_cnn": false,
-      "danforth_rf": true,
+      "danforth_rf": false,
       "bellwether_cnn": false,
       "bellwether_rf": false
     }
