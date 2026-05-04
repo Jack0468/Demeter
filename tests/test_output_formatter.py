@@ -197,13 +197,12 @@ class TestOutputFormatterFilePersistence(unittest.TestCase):
     def test_append_history_max_records(self):
         """Test that history respects max_records limit."""
         for i in range(15):
-            self.formatter.append_history({"id": i})
-        
+            self.formatter.append_history({"id": i}, max_records=10)
+
         with open(os.path.join(self.formatter.output_dir, "diagnosis_history.json"), 'r') as f:
             history = json.load(f)
-        
-        self.assertEqual(len(history), 10)  # Default max is 100, but last 10 added
-    
+
+        self.assertEqual(len(history), 10)  # Default max is 100, but last 10 added    
     def test_append_history_preserves_json_format(self):
         """Test that nested structures are preserved in history."""
         diagnosis = {

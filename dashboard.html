@@ -457,6 +457,65 @@
 
       // Set up periodic refresh
       setInterval(refreshDashboard, REFRESH_INTERVAL);
+
+      // Setup image upload functionality
+      const fileInput = document.getElementById('image-upload-input');
+      const analyzeBtn = document.getElementById('analyze-btn');
+      const imagePreview = document.getElementById('image-preview');
+      const previewText = document.getElementById('preview-text');
+      let selectedFile = null;
+
+      if (fileInput) {
+        fileInput.addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          if (file) {
+            selectedFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              imagePreview.src = e.target.result;
+              imagePreview.style.display = 'block';
+              previewText.style.display = 'none';
+              analyzeBtn.style.display = 'inline-block';
+            };
+            reader.readAsDataURL(file);
+          }
+        });
+      }
+
+      if (analyzeBtn) {
+        analyzeBtn.addEventListener('click', async () => {
+          if (!selectedFile) return;
+          analyzeBtn.textContent = 'Analyzing...';
+          analyzeBtn.disabled = true;
+
+          const formData = new FormData();
+          formData.append('image', selectedFile);
+          
+          // Passing mocked sensor data for analysis. Real implementations might bind this to live sensors.
+          formData.append('temperature', (20 + Math.random() * 10).toFixed(1));
+          formData.append('soil_moisture', (30 + Math.random() * 40).toFixed(1));
+          formData.append('sunlight_hours', (3 + Math.random() * 5).toFixed(1));
+          formData.append('humidity', 55.0);
+
+          try {
+            const response = await fetch('http://localhost:5001/api/predict', {
+              method: 'POST',
+              body: formData
+            });
+            if (response.ok) {
+              await refreshDashboard(); // Re-fetch the data to update the UI
+            } else {
+              const errData = await response.json();
+              alert('Analysis failed: ' + (errData.error || 'Unknown error'));
+            }
+          } catch (err) {
+            alert('Failed to reach inference server at http://localhost:5001. Is web_inference.py running?');
+          } finally {
+            analyzeBtn.textContent = 'Analyze Plant';
+            analyzeBtn.disabled = false;
+          }
+        });
+      }
     });
   </script>
 </head>
@@ -474,8 +533,15 @@
     <!-- LEFT: Input -->
     <div class="card">
       <h2>Image Input</h2>
-      <div class="image-box">[ Plant image preview ]</div>
-      <button class="upload-btn">Upload Plant Image</button>
+      <div class="image-box" id="image-box-container">
+        <span id="preview-text">[ Plant image preview ]</span>
+        <img id="image-preview" style="display:none; max-width:100%; max-height:100%; border-radius: 4px; object-fit: cover;" />
+        <input type="file" id="image-upload-input" accept="image/*" style="display:none;" />
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <button class="upload-btn" onclick="document.getElementById('image-upload-input').click()">Select Image</button>
+        <button class="upload-btn" id="analyze-btn" style="background:#f97316; display:none;">Analyze Plant</button>
+      </div>
 
       <h2 style="margin-top:18px;">Environmental Sensors</h2>
       <div class="sensors">
