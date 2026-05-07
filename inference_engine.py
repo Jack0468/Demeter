@@ -1,8 +1,24 @@
+"""
+Inference Engine for Demeter
+
+This module provides the core inference pipeline for the Demeter project.
+It includes helper functions to:
+- load pre-trained CNN and Random Forest models,
+- classify plant disease from uploaded images,
+- predict plant growth milestones from environmental data,
+- generate a complete diagnosis payload for dashboard integration,
+- log inference outputs to CSV for history tracking.
+
+The file also contains a legacy analysis routine for a previous water-stress
+prediction workflow.
+"""
+
 import os
 import csv
 import json
 import sys
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 import joblib
 from datetime import datetime
@@ -73,7 +89,10 @@ def predict_growth_milestone(environmental_data, rf_model):
     # Expected feature order from training: 
     # ['Soil_Type', 'Sunlight_Hours', 'Water_Frequency', 'Fertilizer_Type', 'Temperature', 'Humidity']
     feature_order = ['Soil_Type', 'Sunlight_Hours', 'Water_Frequency', 'Fertilizer_Type', 'Temperature', 'Humidity']
-    features = np.array([[environmental_data.get(feat, 0) for feat in feature_order]])
+    features = pd.DataFrame(
+        [[environmental_data.get(feat, 0) for feat in feature_order]],
+        columns=feature_order
+    )
     
     growth_prediction = float(rf_model.predict(features)[0])
     

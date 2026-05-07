@@ -1,5 +1,5 @@
 """
-model_evaluation_detailed.py
+model_sanity_check.py
 
 Comprehensive evaluation of Demeter models:
 1. Check model availability and integrity

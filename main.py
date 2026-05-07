@@ -30,10 +30,10 @@ bellwether_dir = config['paths']['bellwether_images_dir']
 metadata_cache_path = "data/metadata_cache.pkl"
 
 # Paths for new dataset-specific models
-plantvillage_dir = "data/layer2_health_rgb/PlantVillage"
-danforth_csv_path = "data/layer3_environment/plant_growth_data.csv"
-plantvillage_cnn_model_path = "models/demeter_cnn_plantvillage.keras"
-danforth_rf_model_path = "models/demeter_rf_danforth.joblib"
+plantvillage_dir = config['paths']['plantvillage_dir']
+danforth_csv_path = config['paths']['danforth_csv_path']
+plantvillage_cnn_model_path = config['paths']['plantvillage_cnn_model_path']
+danforth_rf_model_path = config['paths']['danforth_rf_model_path']
 
 
 def load_bellwether_metadata(base_dir):

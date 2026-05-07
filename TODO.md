@@ -28,5 +28,8 @@
 
 - FROM JACK
 
-verify correctness / accruacy
+verify correctness / accruacy.
 
+check baseline model versions.
+
+evaluation. 
