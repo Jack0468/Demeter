@@ -26,9 +26,13 @@ conda activate $ENV_NAME
 echo "[3/4] Installing CMake and core build tools..."
 conda install cmake -y
 
-# 4. Install all the required Machine Learning Python libraries
-echo "[4/4] Installing Python dependencies via pip..."
-pip install --no-cache-dir tensorflow pandas numpy scikit-learn kaggle joblib tensorflow-datasets Pillow
+# 4. Install all required Python dependencies from requirements.txt
+echo "[4/4] Installing Python dependencies from requirements.txt..."
+if [ ! -f "requirements.txt" ]; then
+  echo "[ERROR] requirements.txt not found in $(pwd)"
+  exit 1
+fi
+pip install --no-cache-dir -r requirements.txt
 
 echo "=========================================="
 echo "✅ Environment Setup Complete!"

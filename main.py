@@ -4,7 +4,7 @@ import glob
 import json
 import pickle
 import pandas as pd
-from inference_engine import load_models, analyze_plant_status, log_to_csv, diagnose_plant_disease, predict_growth_milestone
+from inference_engine import load_models, analyze_plant_status, log_to_csv, diagnose_plant_disease, predict_growth_milestone, generate_complete_diagnosis
 from model_builder import train_and_save_cnn, train_and_save_rf, train_and_save_cnn_plantvillage, train_and_save_rf_danforth # Now active!
 
 # --- CONFIGURATION LOADING ---
@@ -174,7 +174,30 @@ def main():
                 print(f"\nTest {test_count + 1}: {disease_class}")
                 print(f"Image: {image_file}")
                 print(f"Detected Disease: {diagnosis['Detected_Disease']} (Confidence: {diagnosis['Disease_Confidence']:.2%})")
-                
+
+                # Generate dashboard-ready JSON output using sample environmental values.
+                example_env = {
+                    "Soil_Type": 1,
+                    "Sunlight_Hours": 6.0,
+                    "Water_Frequency": 2,
+                    "Fertilizer_Type": 1,
+                    "Temperature": 25.0,
+                    "Humidity": 55.0
+                }
+                growth_pred = predict_growth_milestone(example_env, rf_model)
+                complete_diagnosis = generate_complete_diagnosis(
+                    image_path=image_path,
+                    detected_disease=diagnosis["Detected_Disease"],
+                    disease_confidence=diagnosis["Disease_Confidence"],
+                    all_predictions=diagnosis["All_Predictions"],
+                    predicted_growth=growth_pred["Predicted_Growth_Milestone"],
+                    temperature=example_env["Temperature"],
+                    soil_moisture=50.0,
+                    sunlight_hours=example_env["Sunlight_Hours"],
+                    humidity=example_env["Humidity"]
+                )
+                print(f"Saved dashboard JSON output: data/outputs/latest_diagnosis.json")
+
                 log_to_csv(diagnosis, filepath=csv_log_path)
                 test_count += 1
                 

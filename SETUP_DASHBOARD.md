@@ -52,11 +52,21 @@ python main.py
 
 This will:
 - Load trained models
-- Run disease detection on test images
+- Run disease detection on sample PlantVillage images
 - Run growth predictions on environmental data
 - Generate formatted JSON outputs
 - Save to `data/outputs/latest_diagnosis.json`
 - Append to `data/outputs/diagnosis_history.json`
+
+### Optional Step 3b: Start the inference server
+
+If you want the dashboard's image upload and analyze button to work, start the web inference server in a separate terminal:
+
+```bash
+python web_inference.py
+```
+
+This server listens on `http://localhost:5001` and handles browser-uploaded plant images.
 
 ### Step 4: View the Dashboard
 

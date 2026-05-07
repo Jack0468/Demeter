@@ -7,11 +7,11 @@ data/
 data/*.csv
 
 # Ignore trained machine learning models (these are large binary files)
-models/*.keras
-models/*.joblib
-models/*.h5
-models/*.pb
-saved_model/
+# models/*.keras
+# models/*.joblib
+# models/*.h5
+# models/*.pb
+# saved_model/
 
 # Ignore temporary test images (if you test with your web cam or phone)
 test_images/*

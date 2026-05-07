@@ -24,3 +24,9 @@
 
 - [ ] **Regressor Metrics:** Write an `evaluate_rf_regressor(rf_model, X_test, y_test)` function that calculates and prints Root Mean Square Error (RMSE).
 - [ ] **Cross-Validation Strategy:** Implement k-fold cross-validation in the evaluation scripts to ensure models aren't overfitting to the WSL environment setup.
+
+
+- FROM JACK
+
+verify correctness / accruacy
+
