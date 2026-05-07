@@ -42,34 +42,46 @@ def compare(paths, out_csv='evaluation_outputs/comparison.csv', out_dir='evaluat
     print('Combined summaries written to', out_csv)
 
     # Simple plots
-    # CNN metrics: accuracy, f1
-    if 'accuracy' in combined.columns or 'f1' in combined.columns:
+    # CNN metrics: plot accuracy and f1 separately only if present
+    # make sure there's a run label to use on x-axis (fallback to index)
+    if 'run' not in combined.columns:
+        combined = combined.copy()
+        combined['__run_idx'] = combined.index.astype(str)
+        run_col = '__run_idx'
+    else:
+        run_col = 'run'
+
+    if 'accuracy' in combined.columns:
         plt.figure(figsize=(8, 4))
-        sns.barplot(x='run' if 'run' in combined.columns else combined.index, y='accuracy', data=combined)
+        sns.barplot(x=run_col, y='accuracy', data=combined)
         plt.title('Accuracy by run')
         plt.xticks(rotation=45, ha='right')
         plt.tight_layout()
         plt.savefig(os.path.join(out_dir, 'comparison_accuracy.png'))
         plt.close()
 
-    # RF regression: RMSE/MAE/R2
-    if 'RMSE' in combined.columns or 'MAE' in combined.columns or 'R2' in combined.columns:
-        metrics = []
-        if 'RMSE' in combined.columns:
-            metrics.append('RMSE')
-        if 'MAE' in combined.columns:
-            metrics.append('MAE')
-        if 'R2' in combined.columns:
-            metrics.append('R2')
+    if 'f1' in combined.columns:
+        plt.figure(figsize=(8, 4))
+        sns.barplot(x=run_col, y='f1', data=combined)
+        plt.title('F1 by run')
+        plt.xticks(rotation=45, ha='right')
+        plt.tight_layout()
+        plt.savefig(os.path.join(out_dir, 'comparison_f1.png'))
+        plt.close()
 
+    # RF regression: RMSE/MAE/R2
+    if any(c in combined.columns for c in ('RMSE', 'MAE', 'R2')):
+        metrics = [c for c in ('RMSE', 'MAE', 'R2') if c in combined.columns]
         if metrics:
+            # ensure we have a 'run' column for consistent plotting
+            if 'run' not in combined.columns:
+                combined = combined.copy()
+                combined['run'] = combined.index.astype(str)
+
             plt.figure(figsize=(10, 5))
-            melted = combined.melt(id_vars=['run'] if 'run' in combined.columns else None, value_vars=metrics, var_name='metric', value_name='value')
-            if 'run' in combined.columns:
-                sns.barplot(x='run', y='value', hue='metric', data=melted)
-                plt.xticks(rotation=45, ha='right')
-            else:
-                sns.barplot(x=melted.index, y='value', hue='metric', data=melted)
+            melted = combined.melt(id_vars=['run'], value_vars=metrics, var_name='metric', value_name='value')
+            sns.barplot(x='run', y='value', hue='metric', data=melted)
+            plt.xticks(rotation=45, ha='right')
             plt.title('RF regression metrics by run')
             plt.tight_layout()
             plt.savefig(os.path.join(out_dir, 'comparison_rf_regression.png'))

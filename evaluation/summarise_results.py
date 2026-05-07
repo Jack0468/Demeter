@@ -40,6 +40,9 @@ def summarise(cnn_out='evaluation_outputs/cnn', rf_out='evaluation_outputs/rf', 
         rows.append(rf_row)
 
     # RF classification metrics (fallback)
+    # Note: we treat regression as primary. If both regression and classification
+    # metric files exist, the regression metrics will be used. If you prefer
+    # classification to take precedence, change the order here.
     rf_clf_file = find_file_if_exists(rf_out, ['rf_classification_metrics.csv', 'rf_classification.csv'])
     if rf_clf_file and not rf_reg_file:
         rf_df = pd.read_csv(rf_clf_file)
