@@ -26,10 +26,15 @@
 - [ ] **Cross-Validation Strategy:** Implement k-fold cross-validation in the evaluation scripts to ensure models aren't overfitting to the WSL environment setup.
 
 
-- FROM JACK
+- FROM JACK on 7/05/2026
 
 verify correctness / accruacy.
 
 check baseline model versions.
 
 evaluation. 
+
+fix connection to dashboard.html
+
+retrain rf model
+check if there is any data which was not used in model training that should have been.
