@@ -19,11 +19,6 @@ PROJECT_ROOT = _current_dir.parent.parent if _current_dir.parent.name == "src" e
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-try:
-    from src.training.model_evaluation import evaluate_cnn_model, evaluate_rf_model
-except ModuleNotFoundError:
-    from model_evaluation import evaluate_cnn_model, evaluate_rf_model
-
 # ==========================================
 # 1. THE DEDICATED AUGMENTER
 # ==========================================
@@ -141,8 +136,9 @@ def train_and_save_cnn_plantvillage(plantvillage_dir, save_path, img_height=150,
     print(f"Training CNN for {epochs} epochs...")
     model.fit(train_ds, validation_data=val_ds, epochs=epochs)
     
-    # Evaluate CNN
-    evaluate_cnn_model(model, val_ds, class_names)
+    # Evaluate CNN internally
+    loss, accuracy = model.evaluate(val_ds, verbose=0)
+    print(f"PlantVillage CNN - Val Loss: {loss:.4f}, Val Accuracy: {accuracy:.4f}")
     
     # Save Model
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
@@ -224,8 +220,9 @@ def train_and_save_cnn(df, base_dir, save_path, img_height=150, img_width=150, e
     print(f"Training CNN for {epochs} epochs...")
     model.fit(train_ds, validation_data=val_ds, epochs=epochs)
     
-    # Evaluate CNN (Assuming evaluate_cnn_model accepts tf.data.Dataset)
-    evaluate_cnn_model(model, val_ds, class_names)
+    # Evaluate CNN internally
+    loss, accuracy = model.evaluate(val_ds, verbose=0)
+    print(f"Bellwether CNN - Val Loss: {loss:.4f}, Val Accuracy: {accuracy:.4f}")
     
     # Save Model
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
@@ -332,3 +329,84 @@ def train_and_save_rf(df, save_path):
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     joblib.dump(rf_model, save_path)
     print(f"Random Forest Regressor successfully saved to {save_path}")
+
+
+# ==========================================
+# 6. CNN TRAINING PIPELINE - TILLER COUNT REGRESSION
+# ==========================================
+def train_tiller_cnn_regressor(df, save_path, img_height=150, img_width=150, epochs=10):
+    """Trains a CNN Regressor to predict continuous tiller count from images."""
+    print("Initializing CNN Regressor Training Pipeline (Tiller Count)...")
+    
+    # 1. Clean data
+    if 'tiller_count' not in df.columns:
+        print("[!] ERROR: 'tiller_count' column not found in dataframe.")
+        return False
+        
+    df_clean = df.dropna(subset=['filepath', 'tiller_count']).copy()
+    df_clean = df_clean[df_clean['filepath'].apply(lambda p: os.path.exists(p) and os.path.getsize(p) > 0)]
+    
+    if df_clean.empty:
+        print("[!] ERROR: No valid image paths found for tiller dataset.")
+        return False
+        
+    print(f"Loaded {len(df_clean)} images for Tiller Regression training")
+    
+    # 2. Split data
+    X_train, X_val, y_train, y_val = train_test_split(
+        df_clean['filepath'].values, 
+        df_clean['tiller_count'].values.astype(np.float32), 
+        test_size=0.2, 
+        random_state=123
+    )
+    print(f"Training on {len(X_train)} images, validating on {len(X_val)} images.")
+    
+    # 3. Build tf.data pipeline
+    def process_path(file_path, label):
+        img = tf.io.read_file(file_path)
+        img = tf.image.decode_png(img, channels=3)  # Tiller dataset consists of .png images
+        img = tf.image.resize(img, [img_height, img_width])
+        return img, label
+
+    def create_dataset(paths, labels):
+        ds = tf.data.Dataset.from_tensor_slices((paths, labels))
+        ds = ds.map(process_path, num_parallel_calls=tf.data.AUTOTUNE)
+        ds = ds.batch(16).prefetch(tf.data.AUTOTUNE)  # Smaller batch size for the small 58-image dataset
+        return ds
+
+    train_ds = create_dataset(X_train, y_train)
+    val_ds = create_dataset(X_val, y_val)
+    
+    # 4. Build Architecture (Regressor instead of Classifier)
+    base_model = MobileNetV2(input_shape=(img_height, img_width, 3), include_top=False, weights='imagenet')
+    base_model.trainable = False
+    
+    augmenter = get_augmenter(img_height, img_width)
+    
+    model = models.Sequential([
+        augmenter,
+        base_model,
+        layers.GlobalAveragePooling2D(),
+        layers.Dense(128, activation='relu'),
+        layers.Dropout(0.2),
+        layers.Dense(64, activation='relu'),
+        layers.Dense(1, activation='linear')  # Output layer uses linear activation for continuous prediction
+    ])
+    
+    model.compile(optimizer='adam',
+                  loss='mean_squared_error',
+                  metrics=['mae'])
+    
+    print(f"Training CNN Regressor for {epochs} epochs...")
+    model.fit(train_ds, validation_data=val_ds, epochs=epochs)
+    
+    # Evaluate using MSE and MAE on validation set
+    loss, mae = model.evaluate(val_ds, verbose=0)
+    print(f"Tiller CNN Regressor - Val MSE: {loss:.4f}, Val MAE: {mae:.4f}")
+    
+    # Save Model
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    model.save(save_path)
+    print(f"CNN Regressor successfully saved to {save_path}")
+    
+    return True

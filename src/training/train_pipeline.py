@@ -14,16 +14,22 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 try:
-    from src.training.model_builder import train_and_save_cnn, train_and_save_rf, train_and_save_cnn_plantvillage, train_and_save_rf_danforth
+    from src.training.model_builder import train_and_save_cnn, train_and_save_rf, train_and_save_cnn_plantvillage, train_and_save_rf_danforth, train_tiller_cnn_regressor
 except ModuleNotFoundError:
-    from model_builder import train_and_save_cnn, train_and_save_rf, train_and_save_cnn_plantvillage, train_and_save_rf_danforth
+    from model_builder import train_and_save_cnn, train_and_save_rf, train_and_save_cnn_plantvillage, train_and_save_rf_danforth, train_tiller_cnn_regressor
+
+from scripts.setup_tiller_data import load_manual_tiller_data
 
 # --- CONFIGURATION LOADING ---
+config_path = PROJECT_ROOT / 'config.json'
+if not config_path.exists():
+    config_path = PROJECT_ROOT / 'config' / 'config.json'
+
 try:
-    with open(PROJECT_ROOT / 'config.json', 'r') as config_file:
+    with open(config_path, 'r') as config_file:
         config = json.load(config_file)
 except FileNotFoundError:
-    print("[!] ERROR: config.json not found.")
+    print(f"[!] ERROR: config.json not found at {config_path}.")
     exit(1)
 
 TRAIN_MODEL = config['training'].get('force_retrain', False)  # Legacy support
@@ -33,6 +39,7 @@ train_plantvillage_cnn = config['training']['models'].get('plantvillage_cnn', Fa
 train_danforth_rf = config['training']['models'].get('danforth_rf', False)
 train_bellwether_cnn = config['training']['models'].get('bellwether_cnn', False)
 train_bellwether_rf = config['training']['models'].get('bellwether_rf', False)
+train_tiller_cnn = config['training']['models'].get('tiller_cnn', False)
 
 cnn_model_path = str(PROJECT_ROOT / config['paths']['cnn_model'])
 rf_model_path = str(PROJECT_ROOT / config['paths']['rf_model'])
@@ -44,6 +51,10 @@ plantvillage_dir = str(PROJECT_ROOT / config['paths']['plantvillage_dir'])
 danforth_csv_path = str(PROJECT_ROOT / config['paths']['danforth_csv_path'])
 plantvillage_cnn_model_path = str(PROJECT_ROOT / config['paths']['plantvillage_cnn_model_path'])
 danforth_rf_model_path = str(PROJECT_ROOT / config['paths']['danforth_rf_model_path'])
+
+tiller_txt_path = str(PROJECT_ROOT / config['paths'].get('tiller_data_path', ''))
+tiller_img_dir = str(PROJECT_ROOT / config['paths'].get('tiller_data_image_path', ''))
+tiller_cnn_model_path = str(PROJECT_ROOT / config['paths'].get('tiller_cnn_model_path', 'models/demeter_cnn_tiller.keras'))
 
 
 def load_bellwether_metadata(base_dir):
@@ -132,6 +143,16 @@ def main():
         print("\n[!] Bellwether RF not found or retrain forced. Training...")
         train_and_save_rf(metadata_df, rf_model_path)
         print("[!] Bellwether RF training complete.\n")
+
+    if train_tiller_cnn or not os.path.exists(tiller_cnn_model_path):
+        print("\n[!] Tiller CNN Regressor not found or retrain forced. Training...")
+        tiller_df = load_manual_tiller_data(tiller_txt_path, tiller_img_dir)
+        if tiller_df is not None and not tiller_df.empty:
+            train_tiller_cnn_regressor(tiller_df, tiller_cnn_model_path, epochs=config['training']['epochs'])
+            print("[!] Tiller CNN Regressor training complete.\n")
+        else:
+            print("[!] Failed to load Tiller dataset. Skipping Tiller CNN training.")
+
 
 if __name__ == "__main__":
     main()

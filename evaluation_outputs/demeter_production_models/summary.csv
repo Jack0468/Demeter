@@ -1,0 +1,3 @@
+model,dataset,accuracy,num_samples,run,RMSE,MSE,MAE,R2
+demeter_cnn_plantvillage.keras,PlantVillage,0.8620021319895339,20638.0,demeter_production_models,,,,
+rf,,,,demeter_production_models,0.2907538887688295,0.0845378238341968,0.2254922279792746,0.6618396262886599

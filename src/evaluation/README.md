@@ -16,7 +16,7 @@ Quick examples (zsh)
 
 - Full CNN evaluator:
 ```bash
-python3 evaluation/evaluate_cnn.py --cnn models/demeter_cnn.keras --test_dir data/raw_images/test_set --out_dir evaluation_outputs/cnn --mode full
+python3 src/evaluation/evaluate_cnn.py --cnn models/demeter_cnn.keras --test_dir data/raw_images/test_set --out_dir evaluation_outputs/cnn --mode full
 ```
 
 - Simple CNN quick-check (faster / minimal outputs):
@@ -68,7 +68,7 @@ Notes
 - The scripts make conservative assumptions about dataset layout. If your files are located differently or your tabular CSV has different column names, update the arguments or the script accordingly.
 
 JACKS RUNNING:
-python evaluation/run_evaluation_suite.py \
+python src/evaluation/run_evaluation_suite.py \
   --cnn_model models/demeter_cnn_plantvillage.keras \
   --cnn_test_dir data/layer2_health_rgb/PlantVillage \
   --rf_model models/demeter_rf_danforth.joblib \
