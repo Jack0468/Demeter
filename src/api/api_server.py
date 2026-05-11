@@ -241,6 +241,8 @@ def get_config():
         JSON: Configuration from config.json
     """
     config_path = str(PROJECT_ROOT / "config.json")
+    if not os.path.exists(config_path):
+        config_path = str(PROJECT_ROOT / "config" / "config.json")
     config = load_json_file(config_path)
     
     if not config:

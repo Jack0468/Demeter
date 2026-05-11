@@ -37,4 +37,8 @@ evaluation.
 fix connection to dashboard.html
 
 retrain rf model
+
 check if there is any data which was not used in model training that should have been.
+
+
+PROMPTS TODO:

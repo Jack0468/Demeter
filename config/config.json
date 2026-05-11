@@ -6,16 +6,20 @@
     "bellwether_images_dir": "/mnt/c/Users/Admin/Downloads/fahlgren_et_al_2015_bellwether_jpeg/images",
     "plantvillage_dir": "data/layer2_health_rgb/PlantVillage",
     "danforth_csv_path": "data/layer3_environment/plant_growth_data.csv",
+    "tiller_data_image_path": "data/data_tiller/1327642",
+    "tiller_data_path": "data/data_tiller/tiller_58image_manualmeasure_tillercount_tillerangle_leaf_angle.txt",
     "plantvillage_cnn_model_path": "models/demeter_cnn_plantvillage.keras",
-    "danforth_rf_model_path": "models/demeter_rf_danforth.joblib"
+    "danforth_rf_model_path": "models/demeter_rf_danforth.joblib",
+    "tiller_cnn_model_path": "models/demeter_cnn_tiller.keras"
   },
   "training": {
     "epochs": 5,
     "models": {
-      "plantvillage_cnn": false,
+      "plantvillage_cnn": true,
       "danforth_rf": true,
-      "bellwether_cnn": false,
-      "bellwether_rf": true
+      "bellwether_cnn": true,
+      "bellwether_rf": true,
+      "tiller_cnn": true
     }
   }
 }
