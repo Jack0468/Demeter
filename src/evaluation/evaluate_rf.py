@@ -6,9 +6,15 @@ import joblib
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, accuracy_score, precision_recall_fscore_support, confusion_matrix
+from pathlib import Path
 
+# --- DYNAMIC PROJECT ROOT RESOLUTION ---
+_current_dir = Path(__file__).resolve().parent
+PROJECT_ROOT = _current_dir.parent.parent if _current_dir.parent.name == "src" else _current_dir.parent
 
-def evaluate_rf(model_path, csv_dataset_path, out_dir="evaluation_outputs/rf"):
+def evaluate_rf(model_path, csv_dataset_path, out_dir=None):
+    if out_dir is None:
+        out_dir = str(PROJECT_ROOT / "evaluation_outputs/rf")
     os.makedirs(out_dir, exist_ok=True)
 
     if not os.path.exists(model_path):
@@ -74,9 +80,9 @@ def evaluate_rf(model_path, csv_dataset_path, out_dir="evaluation_outputs/rf"):
             raise ValueError('No suitable regression target found in CSV')
 
     print(f"Using '{target_col}' as regression target.")
-    features = df.drop(columns=[target_col])
-    X = features.select_dtypes(include=[np.number])
-    y_true = df[target_col].values
+    df_clean = df.dropna().copy()
+    X = df_clean.drop(columns=[target_col])
+    y_true = df_clean[target_col].values
 
     print("Generating predictions...")
     y_pred = model.predict(X)
@@ -105,8 +111,10 @@ def evaluate_rf(model_path, csv_dataset_path, out_dir="evaluation_outputs/rf"):
     print("Random Forest regression evaluation complete. Results saved to:", out_dir)
 
 
-def evaluate_rf_simple(model_path, csv_dataset_path, out_dir='evaluation_outputs/rf_simple'):
+def evaluate_rf_simple(model_path, csv_dataset_path, out_dir=None):
     """A minimal RF quick-check: prints regression or classification quick metrics."""
+    if out_dir is None:
+        out_dir = str(PROJECT_ROOT / "evaluation_outputs/rf_simple")
     os.makedirs(out_dir, exist_ok=True)
 
     if not os.path.exists(model_path):
@@ -117,23 +125,23 @@ def evaluate_rf_simple(model_path, csv_dataset_path, out_dir='evaluation_outputs
     print('Loading model ->', model_path)
     model = joblib.load(model_path)
     df = pd.read_csv(csv_dataset_path)
+    df_clean = df.dropna().copy()
 
-    if 'Needs_Water' in df.columns:
-        X = df[['Species_Code', 'Temp', 'Moisture', 'Light']]
-        y = df['Needs_Water']
+    if 'Needs_Water' in df_clean.columns:
+        X = df_clean[['Species_Code', 'Temp', 'Moisture', 'Light']]
+        y = df_clean['Needs_Water']
         y_pred = model.predict(X)
         acc = accuracy_score(y, y_pred)
         pd.DataFrame([{'model': os.path.basename(model_path), 'accuracy': acc, 'num_samples': int(len(y))}]).to_csv(os.path.join(out_dir, 'rf_classification_metrics.csv'), index=False)
         print('Simple RF classification done — saved rf_classification_metrics.csv to', out_dir)
         return
 
-    numeric = df.select_dtypes(include=[np.number])
-    if numeric.shape[1] < 2:
-        raise ValueError('not enough numeric columns for regression quick-check')
+    if df_clean.shape[1] < 2:
+        raise ValueError('not enough columns for regression quick-check')
 
-    target = numeric.columns[-1]
-    X = numeric.drop(columns=[target])
-    y_true = numeric[target].values
+    target = df_clean.columns[-1]
+    X = df_clean.drop(columns=[target])
+    y_true = df_clean[target].values
     y_pred = model.predict(X)
 
     mse = mean_squared_error(y_true, y_pred)
@@ -149,7 +157,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Evaluate a saved Random Forest model (classification or regression)')
     parser.add_argument('--model', type=str, required=True, help='Path to saved RF model (joblib)')
     parser.add_argument('--csv', type=str, required=True, help='Path to CSV dataset used for evaluation')
-    parser.add_argument('--out_dir', type=str, default='evaluation_outputs/rf', help='Directory to write outputs')
+    parser.add_argument('--out_dir', type=str, default=str(PROJECT_ROOT / 'evaluation_outputs/rf'), help='Directory to write outputs')
     parser.add_argument('--mode', choices=['full', 'simple'], default='full', help='Evaluation mode: full (detailed) or simple (quick-check)')
     args = parser.parse_args()
 

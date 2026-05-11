@@ -1,7 +1,11 @@
 import os
 import argparse
 import pandas as pd
+from pathlib import Path
 
+# --- DYNAMIC PROJECT ROOT RESOLUTION ---
+_current_dir = Path(__file__).resolve().parent
+PROJECT_ROOT = _current_dir.parent.parent if _current_dir.parent.name == "src" else _current_dir.parent
 
 def find_file_if_exists(folder, patterns):
     for p in patterns:
@@ -11,7 +15,13 @@ def find_file_if_exists(folder, patterns):
     return None
 
 
-def summarise(cnn_out='evaluation_outputs/cnn', rf_out='evaluation_outputs/rf', out_file='evaluation_outputs/summary.csv', run_name=None):
+def summarise(cnn_out=None, rf_out=None, out_file=None, run_name=None):
+    if cnn_out is None:
+        cnn_out = str(PROJECT_ROOT / 'evaluation_outputs/cnn')
+    if rf_out is None:
+        rf_out = str(PROJECT_ROOT / 'evaluation_outputs/rf')
+    if out_file is None:
+        out_file = str(PROJECT_ROOT / 'evaluation_outputs/summary.csv')
     os.makedirs(os.path.dirname(out_file), exist_ok=True)
 
     rows = []
@@ -66,9 +76,9 @@ def summarise(cnn_out='evaluation_outputs/cnn', rf_out='evaluation_outputs/rf', 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Summarise evaluation outputs from CNN and RF into one CSV')
-    parser.add_argument('--cnn_out', default='evaluation_outputs/cnn')
-    parser.add_argument('--rf_out', default='evaluation_outputs/rf')
-    parser.add_argument('--out_file', default='evaluation_outputs/summary.csv')
+    parser.add_argument('--cnn_out', default=str(PROJECT_ROOT / 'evaluation_outputs/cnn'))
+    parser.add_argument('--rf_out', default=str(PROJECT_ROOT / 'evaluation_outputs/rf'))
+    parser.add_argument('--out_file', default=str(PROJECT_ROOT / 'evaluation_outputs/summary.csv'))
     args = parser.parse_args()
 
     summarise(args.cnn_out, args.rf_out, args.out_file)

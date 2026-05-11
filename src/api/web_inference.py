@@ -1,20 +1,39 @@
 import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from inference_engine import (
-    load_models, 
-    generate_complete_diagnosis, 
-    diagnose_plant_disease, 
-    predict_growth_milestone
-)
+import sys
+from pathlib import Path
+
+# --- DYNAMIC PROJECT ROOT RESOLUTION ---
+_current_dir = Path(__file__).resolve().parent
+PROJECT_ROOT = _current_dir.parent.parent if _current_dir.parent.name == "src" else _current_dir.parent
+
+# Add project root to path for imports from src.*
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+try:
+    from src.core.inference_engine import (
+        load_models, 
+        generate_complete_diagnosis, 
+        diagnose_plant_disease, 
+        predict_growth_milestone
+    )
+except ModuleNotFoundError:
+    from inference_engine import (
+        load_models, 
+        generate_complete_diagnosis, 
+        diagnose_plant_disease, 
+        predict_growth_milestone
+    )
 
 app = Flask(__name__)
 CORS(app)
 
 # Configuration for models and data
-plantvillage_cnn_model_path = "models/demeter_cnn_plantvillage.keras"
-danforth_rf_model_path = "models/demeter_rf_danforth.joblib"
-plantvillage_dir = "data/layer2_health_rgb/PlantVillage"
+plantvillage_cnn_model_path = str(PROJECT_ROOT / "models/demeter_cnn_plantvillage.keras")
+danforth_rf_model_path = str(PROJECT_ROOT / "models/demeter_rf_danforth.joblib")
+plantvillage_dir = str(PROJECT_ROOT / "data/layer2_health_rgb/PlantVillage")
 
 print("Loading AI Models for Web Inference...")
 try:
@@ -46,7 +65,7 @@ def predict():
         if file.filename == '':
             return jsonify({"error": "No selected file"}), 400
             
-        uploads_dir = "data/uploads"
+        uploads_dir = str(PROJECT_ROOT / "data/uploads")
         os.makedirs(uploads_dir, exist_ok=True)
         image_path = os.path.join(uploads_dir, file.filename)
         file.save(image_path)

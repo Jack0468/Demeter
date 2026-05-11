@@ -2,16 +2,25 @@ import os
 import json
 import pickle
 import pandas as pd
-from model_builder import (
-    train_and_save_cnn, 
-    train_and_save_rf, 
-    train_and_save_cnn_plantvillage, 
-    train_and_save_rf_danforth
-)
+import sys
+from pathlib import Path
+
+# --- DYNAMIC PROJECT ROOT RESOLUTION ---
+_current_dir = Path(__file__).resolve().parent
+PROJECT_ROOT = _current_dir.parent.parent if _current_dir.parent.name == "src" else _current_dir.parent
+
+# Add project root to path for imports from src.*
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+try:
+    from src.training.model_builder import train_and_save_cnn, train_and_save_rf, train_and_save_cnn_plantvillage, train_and_save_rf_danforth
+except ModuleNotFoundError:
+    from model_builder import train_and_save_cnn, train_and_save_rf, train_and_save_cnn_plantvillage, train_and_save_rf_danforth
 
 # --- CONFIGURATION LOADING ---
 try:
-    with open('config.json', 'r') as config_file:
+    with open(PROJECT_ROOT / 'config.json', 'r') as config_file:
         config = json.load(config_file)
 except FileNotFoundError:
     print("[!] ERROR: config.json not found.")
@@ -25,16 +34,16 @@ train_danforth_rf = config['training']['models'].get('danforth_rf', False)
 train_bellwether_cnn = config['training']['models'].get('bellwether_cnn', False)
 train_bellwether_rf = config['training']['models'].get('bellwether_rf', False)
 
-cnn_model_path = config['paths']['cnn_model']
-rf_model_path = config['paths']['rf_model']
-bellwether_dir = config['paths']['bellwether_images_dir']
-metadata_cache_path = "data/metadata_cache.pkl"
+cnn_model_path = str(PROJECT_ROOT / config['paths']['cnn_model'])
+rf_model_path = str(PROJECT_ROOT / config['paths']['rf_model'])
+bellwether_dir = str(PROJECT_ROOT / config['paths']['bellwether_images_dir'])
+metadata_cache_path = str(PROJECT_ROOT / "data/metadata_cache.pkl")
 
 # Paths for new dataset-specific models
-plantvillage_dir = "data/layer2_health_rgb/PlantVillage"
-danforth_csv_path = "data/layer3_environment/plant_growth_data.csv"
-plantvillage_cnn_model_path = "models/demeter_cnn_plantvillage.keras"
-danforth_rf_model_path = "models/demeter_rf_danforth.joblib"
+plantvillage_dir = str(PROJECT_ROOT / config['paths']['plantvillage_dir'])
+danforth_csv_path = str(PROJECT_ROOT / config['paths']['danforth_csv_path'])
+plantvillage_cnn_model_path = str(PROJECT_ROOT / config['paths']['plantvillage_cnn_model_path'])
+danforth_rf_model_path = str(PROJECT_ROOT / config['paths']['danforth_rf_model_path'])
 
 
 def load_bellwether_metadata(base_dir):

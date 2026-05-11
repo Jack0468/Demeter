@@ -1,16 +1,42 @@
+"""
+Inference Engine for Demeter
+
+This module provides the core inference pipeline for the Demeter project.
+It includes helper functions to:
+- load pre-trained CNN and Random Forest models,
+- classify plant disease from uploaded images,
+- predict plant growth milestones from environmental data,
+- generate a complete diagnosis payload for dashboard integration,
+- log inference outputs to CSV for history tracking.
+
+The file also contains a legacy analysis routine for a previous water-stress
+prediction workflow.
+"""
+
 import os
 import csv
 import json
 import sys
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 import joblib
 from datetime import datetime
 from pathlib import Path
 
+# --- DYNAMIC PROJECT ROOT RESOLUTION ---
+# Ensures paths like 'data/...' always resolve to the Demeter root folder,
+# regardless of whether this script is currently in the root or moved to src/core/
+_current_dir = Path(__file__).resolve().parent
+PROJECT_ROOT = _current_dir if _current_dir.name == "Demeter" else _current_dir.parent.parent
+
 # Import our new modules
-from output_formatter import OutputFormatter
-from status_engine import StatusEngine
+try:
+    from src.core.output_formatter import OutputFormatter
+    from src.core.status_engine import StatusEngine
+except ModuleNotFoundError:
+    from output_formatter import OutputFormatter
+    from status_engine import StatusEngine
 
 def load_models(cnn_path, rf_path):
     """Loads both the pre-trained CNN and Random Forest models."""
@@ -73,7 +99,10 @@ def predict_growth_milestone(environmental_data, rf_model):
     # Expected feature order from training: 
     # ['Soil_Type', 'Sunlight_Hours', 'Water_Frequency', 'Fertilizer_Type', 'Temperature', 'Humidity']
     feature_order = ['Soil_Type', 'Sunlight_Hours', 'Water_Frequency', 'Fertilizer_Type', 'Temperature', 'Humidity']
-    features = np.array([[environmental_data.get(feat, 0) for feat in feature_order]])
+    features = pd.DataFrame(
+        [[environmental_data.get(feat, 0) for feat in feature_order]],
+        columns=feature_order
+    )
     
     growth_prediction = float(rf_model.predict(features)[0])
     
@@ -211,7 +240,8 @@ def log_to_csv(data_dict, filepath="data/demeter_logs.csv"):
     Enhanced to handle nested dictionaries (e.g., All_Predictions, Environmental_Input)
     by serializing them as JSON strings.
     """
-    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    abs_filepath = PROJECT_ROOT / filepath
+    os.makedirs(abs_filepath.parent, exist_ok=True)
     
     # Flatten nested dictionaries for CSV
     flat_dict = {}
@@ -223,8 +253,8 @@ def log_to_csv(data_dict, filepath="data/demeter_logs.csv"):
         else:
             flat_dict[key] = value
     
-    file_exists = os.path.isfile(filepath)
-    with open(filepath, mode='a', newline='') as file:
+    file_exists = abs_filepath.is_file()
+    with open(abs_filepath, mode='a', newline='') as file:
         writer = csv.DictWriter(file, fieldnames=flat_dict.keys())
         if not file_exists:
             writer.writeheader()

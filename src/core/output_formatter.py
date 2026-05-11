@@ -7,19 +7,23 @@ import json
 import os
 from datetime import datetime
 from typing import Dict, List, Any, Optional
+from pathlib import Path
 
+# --- DYNAMIC PROJECT ROOT RESOLUTION ---
+_current_dir = Path(__file__).resolve().parent
+PROJECT_ROOT = _current_dir.parent.parent if _current_dir.parent.name == "src" else _current_dir.parent
 
 class OutputFormatter:
     """Serializes inference results into dashboard-compatible JSON."""
     
-    def __init__(self, output_dir: str = "data/outputs"):
+    def __init__(self, output_dir: Optional[str] = None):
         """
         Initialize formatter with output directory.
         
         Args:
             output_dir: Directory to store JSON outputs
         """
-        self.output_dir = output_dir
+        self.output_dir = output_dir or str(PROJECT_ROOT / "data/outputs")
         os.makedirs(output_dir, exist_ok=True)
     
     @staticmethod

@@ -11,17 +11,22 @@ from flask_cors import CORS
 from datetime import datetime
 from pathlib import Path
 
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# --- DYNAMIC PROJECT ROOT RESOLUTION ---
+_current_dir = Path(__file__).resolve().parent
+PROJECT_ROOT = _current_dir.parent.parent if _current_dir.parent.name == "src" else _current_dir.parent
+
+# Add project root to path for imports from src.*
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # Configuration
-OUTPUT_DIR = os.path.join(os.getcwd(), "data", "outputs")
-LATEST_DIAGNOSIS_FILE = os.path.join(OUTPUT_DIR, "latest_diagnosis.json")
-HISTORY_FILE = os.path.join(OUTPUT_DIR, "diagnosis_history.json")
-CSV_LOG_FILE = os.path.join(os.getcwd(), "data", "plant_diagnostics.csv")
+OUTPUT_DIR = str(PROJECT_ROOT / "data" / "outputs")
+LATEST_DIAGNOSIS_FILE = str(PROJECT_ROOT / "data" / "outputs" / "latest_diagnosis.json")
+HISTORY_FILE = str(PROJECT_ROOT / "data" / "outputs" / "diagnosis_history.json")
+CSV_LOG_FILE = str(PROJECT_ROOT / "data" / "plant_diagnostics.csv")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -196,7 +201,10 @@ def get_thresholds():
     Returns:
         JSON: Current threshold configuration
     """
-    from status_engine import StressThresholds
+    try:
+        from src.core.status_engine import StressThresholds
+    except ModuleNotFoundError:
+        from status_engine import StressThresholds
     
     thresholds = StressThresholds()
     
@@ -232,7 +240,7 @@ def get_config():
     Returns:
         JSON: Configuration from config.json
     """
-    config_path = os.path.join(os.getcwd(), "config.json")
+    config_path = str(PROJECT_ROOT / "config.json")
     config = load_json_file(config_path)
     
     if not config:
@@ -251,17 +259,17 @@ def get_system_status():
     """
     # Check model availability
     models = {
-        "cnn_plantvillage": os.path.exists("models/demeter_cnn_plantvillage.keras"),
-        "rf_danforth": os.path.exists("models/demeter_rf_danforth.joblib"),
-        "cnn_bellwether": os.path.exists("models/demeter_cnn.keras"),
-        "rf_bellwether": os.path.exists("models/demeter_rf.joblib")
+        "cnn_plantvillage": (PROJECT_ROOT / "models/demeter_cnn_plantvillage.keras").exists(),
+        "rf_danforth": (PROJECT_ROOT / "models/demeter_rf_danforth.joblib").exists(),
+        "cnn_bellwether": (PROJECT_ROOT / "models/demeter_cnn.keras").exists(),
+        "rf_bellwether": (PROJECT_ROOT / "models/demeter_rf.joblib").exists()
     }
     
     # Check data availability
     data_available = {
-        "plantvillage": os.path.exists("data/layer2_health_rgb/PlantVillage"),
-        "danforth": os.path.exists("data/layer3_environment/plant_growth_data.csv"),
-        "bellwether": os.path.exists("data/bellwether_images_dir")
+        "plantvillage": (PROJECT_ROOT / "data/layer2_health_rgb/PlantVillage").exists(),
+        "danforth": (PROJECT_ROOT / "data/layer3_environment/plant_growth_data.csv").exists(),
+        "bellwether": (PROJECT_ROOT / "data/bellwether_images_dir").exists()
     }
     
     # Get latest diagnosis timestamp
@@ -287,7 +295,7 @@ def serve_dashboard():
     Returns:
         HTML: dashboard.html
     """
-    dashboard_path = os.path.join(os.getcwd(), "dashboard.html")
+    dashboard_path = str(PROJECT_ROOT / "frontend" / "dashboard.html")
     if os.path.exists(dashboard_path):
         with open(dashboard_path, 'r') as f:
             return f.read(), 200

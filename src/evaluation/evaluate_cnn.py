@@ -7,9 +7,15 @@ from sklearn.metrics import (accuracy_score, precision_recall_fscore_support,
                              confusion_matrix, classification_report)
 import matplotlib.pyplot as plt
 import seaborn as sns
+from pathlib import Path
 
+# --- DYNAMIC PROJECT ROOT RESOLUTION ---
+_current_dir = Path(__file__).resolve().parent
+PROJECT_ROOT = _current_dir.parent.parent if _current_dir.parent.name == "src" else _current_dir.parent
 
-def evaluate_cnn(cnn_path, test_dir, img_height=150, img_width=150, batch_size=32, out_dir="evaluation_outputs/cnn"):
+def evaluate_cnn(cnn_path, test_dir, img_height=150, img_width=150, batch_size=32, out_dir=None):
+    if out_dir is None:
+        out_dir = str(PROJECT_ROOT / "evaluation_outputs/cnn")
     os.makedirs(out_dir, exist_ok=True)
 
     if not os.path.exists(cnn_path):
@@ -31,6 +37,16 @@ def evaluate_cnn(cnn_path, test_dir, img_height=150, img_width=150, batch_size=3
     )
 
     class_names = test_ds.class_names
+    num_model_classes = model.output_shape[-1]
+
+    # Pad or truncate class_names to match the model's output shape
+    if len(class_names) < num_model_classes:
+        print(f"Warning: Test directory has {len(class_names)} classes, but model outputs {num_model_classes}.")
+        for i in range(len(class_names), num_model_classes):
+            class_names.append(f"Unknown_Class_{i}")
+    elif len(class_names) > num_model_classes:
+        print(f"Warning: Test directory has {len(class_names)} classes, but model outputs {num_model_classes}.")
+        class_names = class_names[:num_model_classes]
 
     y_true = []
     y_pred = []
@@ -45,10 +61,12 @@ def evaluate_cnn(cnn_path, test_dir, img_height=150, img_width=150, batch_size=3
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
 
+    labels_list = list(range(num_model_classes))
+
     # Metrics
     acc = float(accuracy_score(y_true, y_pred))
-    precision, recall, f1, support = precision_recall_fscore_support(y_true, y_pred, average=None, zero_division=0)
-    class_report = classification_report(y_true, y_pred, target_names=class_names, zero_division=0)
+    precision, recall, f1, support = precision_recall_fscore_support(y_true, y_pred, labels=labels_list, average=None, zero_division=0)
+    class_report = classification_report(y_true, y_pred, labels=labels_list, target_names=class_names, zero_division=0)
 
     # Save overall metrics
     overall = {'model': os.path.basename(cnn_path), 'dataset': os.path.basename(test_dir), 'accuracy': acc, 'num_samples': int(len(y_true))}
@@ -65,12 +83,12 @@ def evaluate_cnn(cnn_path, test_dir, img_height=150, img_width=150, batch_size=3
     per_class.to_csv(os.path.join(out_dir, 'cnn_per_class_metrics.csv'), index=False)
 
     # Confusion matrix
-    cm = confusion_matrix(y_true, y_pred)
+    cm = confusion_matrix(y_true, y_pred, labels=labels_list)
     cm_df = pd.DataFrame(cm, index=class_names, columns=class_names)
     cm_df.to_csv(os.path.join(out_dir, 'cnn_confusion_matrix.csv'))
 
     # Plot confusion matrix
-    plt.figure(figsize=(8, 6))
+    plt.figure(figsize=(12, 10))
     sns.heatmap(cm_df, annot=True, fmt='d', cmap='Blues')
     plt.title('CNN Confusion Matrix')
     plt.ylabel('True')
@@ -87,7 +105,7 @@ def evaluate_cnn(cnn_path, test_dir, img_height=150, img_width=150, batch_size=3
     acc_df.to_csv(os.path.join(out_dir, 'cnn_per_class_accuracy.csv'), index=False)
 
     # Plot per-class accuracy
-    plt.figure(figsize=(10, 5))
+    plt.figure(figsize=(12, 6))
     sns.barplot(x='class', y='per_class_accuracy', data=acc_df)
     plt.ylim(0, 1)
     plt.title('Per-Class Accuracy')
@@ -103,8 +121,10 @@ def evaluate_cnn(cnn_path, test_dir, img_height=150, img_width=150, batch_size=3
     print("CNN evaluation complete. Outputs written to:", out_dir)
 
 
-def evaluate_cnn_simple(cnn_path, test_dir, img_size=(150, 150), out_dir='evaluation_outputs/cnn_simple'):
+def evaluate_cnn_simple(cnn_path, test_dir, img_size=(150, 150), out_dir=None):
     """Very small, easy-to-read evaluator (single-image predict loop)."""
+    if out_dir is None:
+        out_dir = str(PROJECT_ROOT / "evaluation_outputs/cnn_simple")
     os.makedirs(out_dir, exist_ok=True)
 
     if not os.path.exists(cnn_path):
@@ -143,9 +163,9 @@ def evaluate_cnn_simple(cnn_path, test_dir, img_size=(150, 150), out_dir='evalua
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Evaluate CNN and save metrics/plots')
-    parser.add_argument('--cnn', type=str, default='models/demeter_cnn.keras', help='Path to saved Keras CNN')
+    parser.add_argument('--cnn', type=str, default=str(PROJECT_ROOT / 'models/demeter_cnn.keras'), help='Path to saved Keras CNN')
     parser.add_argument('--test_dir', type=str, required=True, help='Directory with test images, subfolders per class')
-    parser.add_argument('--out_dir', type=str, default='evaluation_outputs/cnn', help='Output folder')
+    parser.add_argument('--out_dir', type=str, default=str(PROJECT_ROOT / 'evaluation_outputs/cnn'), help='Output folder')
     parser.add_argument('--mode', choices=['full', 'simple'], default='full', help='Evaluation mode: full (detailed) or simple (single-image loop)')
     args = parser.parse_args()
     if args.mode == 'full':

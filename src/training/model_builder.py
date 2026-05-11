@@ -8,7 +8,21 @@ from tensorflow.keras.applications import MobileNetV2
 from sklearn.ensemble import RandomForestRegressor # Changed from Classifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
-from model_evaluation import evaluate_cnn_model, evaluate_rf_model
+import sys
+from pathlib import Path
+
+# --- DYNAMIC PROJECT ROOT RESOLUTION ---
+_current_dir = Path(__file__).resolve().parent
+PROJECT_ROOT = _current_dir.parent.parent if _current_dir.parent.name == "src" else _current_dir.parent
+
+# Add project root to path for imports from src.*
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+try:
+    from src.training.model_evaluation import evaluate_cnn_model, evaluate_rf_model
+except ModuleNotFoundError:
+    from model_evaluation import evaluate_cnn_model, evaluate_rf_model
 
 # ==========================================
 # 1. THE DEDICATED AUGMENTER
@@ -240,17 +254,6 @@ def train_and_save_rf_danforth(danforth_csv_path, save_path):
     df_clean = df.dropna().copy()
     print(f"After removing NaN: {len(df_clean)} records")
     
-    # Encode categorical features
-    from sklearn.preprocessing import LabelEncoder
-    
-    categorical_cols = df_clean.select_dtypes(include=['object']).columns
-    encoders = {}
-    
-    for col in categorical_cols:
-        le = LabelEncoder()
-        df_clean[col] = le.fit_transform(df_clean[col])
-        encoders[col] = le
-    
     # Features: Environmental conditions (excluding Growth_Milestone target)
     feature_cols = [col for col in df_clean.columns if col != 'Growth_Milestone']
     X = df_clean[feature_cols]
@@ -260,8 +263,24 @@ def train_and_save_rf_danforth(danforth_csv_path, save_path):
     
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     
-    # Train as a Regressor
-    rf_model = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
+    # We will use a Scikit-Learn Pipeline to handle categorical features automatically
+    from sklearn.pipeline import Pipeline
+    from sklearn.compose import ColumnTransformer
+    from sklearn.preprocessing import OrdinalEncoder
+    
+    categorical_cols = X.select_dtypes(include=['object']).columns.tolist()
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), categorical_cols)
+        ],
+        remainder='passthrough'
+    )
+    
+    # Train as a Regressor inside a Pipeline
+    rf_model = Pipeline(steps=[
+        ('preprocessor', preprocessor),
+        ('regressor', RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1))
+    ])
     rf_model.fit(X_train, y_train)
     
     # Evaluate using RMSE
@@ -269,7 +288,11 @@ def train_and_save_rf_danforth(danforth_csv_path, save_path):
     mse = mean_squared_error(y_test, predictions)
     rmse = np.sqrt(mse)
     print(f"Random Forest Regressor RMSE: {rmse:.4f}")
-    print(f"Feature importance: {dict(zip(feature_cols, rf_model.feature_importances_))}")
+    
+    # Feature importances are ordered by the ColumnTransformer (categorical first, then remainder)
+    ordered_features = categorical_cols + [c for c in X.columns if c not in categorical_cols]
+    regressor = rf_model.named_steps['regressor']
+    print(f"Feature importance: {dict(zip(ordered_features, regressor.feature_importances_))}")
     
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     joblib.dump(rf_model, save_path)

@@ -17,3 +17,5 @@ Pillow>=10.0.0  # Image processing
 # Utilities
 kagglehub>=0.2.0  # For Kaggle dataset downloads
 requests>=2.31.0  # HTTP requests
+matplotlib>=3.7.0  # For data visualization
+seaborn>=0.12.0  # For enhanced data visualization

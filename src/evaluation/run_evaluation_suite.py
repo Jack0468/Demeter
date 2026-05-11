@@ -2,6 +2,13 @@ import os
 import argparse
 import importlib.util
 import sys
+from pathlib import Path
+from datetime import datetime
+
+# --- DYNAMIC PROJECT ROOT RESOLUTION ---
+_current_dir = Path(__file__).resolve().parent
+# Resolves accurately whether currently in /evaluation/ or moved to /src/evaluation/
+PROJECT_ROOT = _current_dir.parent.parent if _current_dir.parent.name == "src" else _current_dir.parent
 
 
 def load_module_from_path(name, path):
@@ -13,13 +20,13 @@ def load_module_from_path(name, path):
 
 def main():
     parser = argparse.ArgumentParser(description='Run CNN eval, RF eval, then summarise results')
-    parser.add_argument('--cnn_model', default='models/demeter_cnn.keras')
+    parser.add_argument('--cnn_model', default=str(PROJECT_ROOT / 'models/demeter_cnn.keras'))
     parser.add_argument('--cnn_test_dir', required=True)
     parser.add_argument('--cnn_mode', choices=['full', 'simple'], default='full')
-    parser.add_argument('--rf_model', default='models/demeter_rf.joblib')
+    parser.add_argument('--rf_model', default=str(PROJECT_ROOT / 'models/demeter_rf.joblib'))
     parser.add_argument('--rf_csv', required=True)
     parser.add_argument('--rf_mode', choices=['full', 'simple'], default='full')
-    parser.add_argument('--out_base', default='evaluation_outputs')
+    parser.add_argument('--out_base', default=str(PROJECT_ROOT / 'evaluation_outputs'))
     parser.add_argument('--run_name', default=None)
     args = parser.parse_args()
 
@@ -33,9 +40,16 @@ def main():
     rf_mod = load_module_from_path('eval_rf', rf_path)
     sum_mod = load_module_from_path('eval_sum', summary_path)
 
+    # Group outputs by run_name or a timestamped folder to prevent overwriting
+    if args.run_name:
+        active_out_base = os.path.join(args.out_base, args.run_name)
+    else:
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        active_out_base = os.path.join(args.out_base, f"run_{timestamp}")
+
     # prepare out dirs
-    cnn_out = os.path.join(args.out_base, 'cnn' if args.cnn_mode == 'full' else 'cnn_simple')
-    rf_out = os.path.join(args.out_base, 'rf' if args.rf_mode == 'full' else 'rf_simple')
+    cnn_out = os.path.join(active_out_base, 'cnn' if args.cnn_mode == 'full' else 'cnn_simple')
+    rf_out = os.path.join(active_out_base, 'rf' if args.rf_mode == 'full' else 'rf_simple')
 
     try:
         print(f"Running CNN ({args.cnn_mode}) -> output: {cnn_out}")
@@ -51,9 +65,9 @@ def main():
             rf_mod.evaluate_rf_simple(args.rf_model, args.rf_csv, out_dir=rf_out)
 
         print('Summarising results...')
-        sum_mod.summarise(cnn_out=cnn_out, rf_out=rf_out, out_file=os.path.join(args.out_base, 'summary.csv'), run_name=args.run_name)
+        sum_mod.summarise(cnn_out=cnn_out, rf_out=rf_out, out_file=os.path.join(active_out_base, 'summary.csv'), run_name=args.run_name)
 
-        print('Evaluation suite finished. Summary at', os.path.join(args.out_base, 'summary.csv'))
+        print('Evaluation suite finished. Summary at', os.path.join(active_out_base, 'summary.csv'))
     except Exception as e:
         print('Evaluation suite failed with error:', e)
         raise

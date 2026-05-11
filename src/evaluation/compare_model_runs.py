@@ -4,7 +4,11 @@ import glob
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from pathlib import Path
 
+# --- DYNAMIC PROJECT ROOT RESOLUTION ---
+_current_dir = Path(__file__).resolve().parent
+PROJECT_ROOT = _current_dir.parent.parent if _current_dir.parent.name == "src" else _current_dir.parent
 
 def collect_summaries(paths):
     rows = []
@@ -35,7 +39,11 @@ def collect_summaries(paths):
     return combined
 
 
-def compare(paths, out_csv='evaluation_outputs/comparison.csv', out_dir='evaluation_outputs'):
+def compare(paths, out_csv=None, out_dir=None):
+    if out_csv is None:
+        out_csv = str(PROJECT_ROOT / 'evaluation_outputs/comparison.csv')
+    if out_dir is None:
+        out_dir = str(PROJECT_ROOT / 'evaluation_outputs')
     os.makedirs(out_dir, exist_ok=True)
     combined = collect_summaries(paths)
     combined.to_csv(out_csv, index=False)
@@ -93,8 +101,8 @@ def compare(paths, out_csv='evaluation_outputs/comparison.csv', out_dir='evaluat
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Compare multiple model run summaries')
     parser.add_argument('paths', nargs='+', help='Paths to summary CSVs or folders containing summary.csv (supports glob)')
-    parser.add_argument('--out_csv', default='evaluation_outputs/comparison.csv')
-    parser.add_argument('--out_dir', default='evaluation_outputs')
+    parser.add_argument('--out_csv', default=str(PROJECT_ROOT / 'evaluation_outputs/comparison.csv'))
+    parser.add_argument('--out_dir', default=str(PROJECT_ROOT / 'evaluation_outputs'))
     args = parser.parse_args()
 
     compare(args.paths, out_csv=args.out_csv, out_dir=args.out_dir)

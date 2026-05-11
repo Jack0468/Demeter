@@ -3,12 +3,17 @@ import shutil
 import kagglehub
 import tensorflow as tf
 import requests
+from pathlib import Path
+
+# --- DYNAMIC PROJECT ROOT RESOLUTION ---
+_current_dir = Path(__file__).resolve().parent
+PROJECT_ROOT = _current_dir.parent if _current_dir.name == "scripts" else _current_dir
 
 def expand_demeter_datasets():
     print("Starting Dataset Expansion Pipeline...\n")
     
     # 1. Setup local directories (Consistent with existing architecture)
-    base_data_dir = os.path.join(os.getcwd(), 'data')
+    base_data_dir = str(PROJECT_ROOT / 'data')
     disease_dir = os.path.join(base_data_dir, 'plant_disease')
     molecular_dir = os.path.join(base_data_dir, 'molecular_plant')
     danforth_dir = os.path.join(base_data_dir, 'danforth_center')
@@ -34,13 +39,6 @@ def expand_demeter_datasets():
     print(f"🔗 Source: {mol_url}")
     # Recommendation: Check the 'Supplemental Information' section on the page 
     # to find direct .xlsx or .csv links for this specific paper.
-
-    # --- 3. Danforth Center: Data Science Portal ---
-    print("3/3: Preparing Danforth Center Data...")
-    danforth_url = "https://datasci.danforthcenter.org/data/files"
-    # The Danforth portal typically uses a 'download.py' script or CKAN API.
-    # You can use the requests library to pull specific identified files.
-    print(f"ℹ️  To automate Danforth, use their CKAN API if you have a token.\n")
 
     print("==========================================")
     print("Expansion Complete! Data stored in /data/")
