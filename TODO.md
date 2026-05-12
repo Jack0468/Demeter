@@ -30,15 +30,17 @@
 
 verify correctness / accruacy.
 
-check baseline model versions.
+check baseline model versions so we can compare outputs based on different input techniques.
+e.g. no augmenter, different activation functions on CNN
+
+CNN SPECIFIC FEATURES
+padding of image pixels to perform convolutions.
 
 evaluation. 
 
 fix connection to dashboard.html
 
-retrain rf model
-
-check if there is any data which was not used in model training that should have been.
-
+check if we should use a SVM. -> defo yes for classification of health status
+or if the outputs of the various models can be fed into a NN
 
 PROMPTS TODO:
