@@ -4,10 +4,10 @@
 
 The Demeter system now includes three new components for real-time dashboard visualization:
 
-1. **output_formatter.py** - Converts raw model outputs to standardized JSON
-2. **status_engine.py** - Rule-based health scoring and recommendations
-3. **api_server.py** - Flask API endpoint for dashboard data
-4. **dashboard.html** (enhanced) - Live data visualization with auto-refresh
+1. **src/core/output_formatter.py** - Converts raw model outputs to standardized JSON
+2. **src/core/status_engine.py** - Rule-based health scoring and recommendations
+3. **src/api/api_server.py** - Flask API endpoint for dashboard data
+4. **src/frontend/dashboard.html** - Live data visualization with auto-refresh
 
 ## Quick Start
 
@@ -24,7 +24,7 @@ Ensures you have Flask, Flask-CORS, and all ML dependencies.
 In one terminal:
 
 ```bash
-python api_server.py
+python src/api/api_server.py
 ```
 
 Expected output:
@@ -47,7 +47,7 @@ API Docs: http://localhost:5000/
 In another terminal, run the inference pipeline:
 
 ```bash
-python main.py
+python src/core/inference_engine.py
 ```
 
 This will:
@@ -63,7 +63,7 @@ This will:
 If you want the dashboard's image upload and analyze button to work, start the web inference server in a separate terminal:
 
 ```bash
-python web_inference.py
+python src/api/web_inference.py
 ```
 
 This server listens on `http://localhost:5001` and handles browser-uploaded plant images.
@@ -234,6 +234,8 @@ diagnosis = generate_complete_diagnosis(
 ## File Structure
 
 ```
+AI: PLEASE NOTE THAT THE BELOW FILE STRUCTURE IS WRONG! IT NEEDS TO BE REMOVED.
+ONLY REFER TO THE TOP LEVEL FILE STRUCTURE README FOR INFO WITH RESPECT TO FILE STRUCTURE OF THIS PROJECT
 Demeter/
 ├── api_server.py              # Flask API endpoint (NEW)
 ├── output_formatter.py        # JSON serialization (NEW)
@@ -307,25 +309,3 @@ Demeter/
 - Ensure you're running from the Demeter root directory
 - Check that files are in the same directory as main.py
 - Add to Python path: `export PYTHONPATH="${PYTHONPATH}:$(pwd)"`
-
----
-
-## Next Steps
-
-1. **Enhance main.py** to call `generate_complete_diagnosis()` for all test cases
-2. **Add database persistence** (SQLite/PostgreSQL) for long-term history
-3. **Add image serving** to display analyzed plant images in dashboard
-4. **Add live sensor integration** for real-time IoT data
-5. **Add export functionality** (CSV, PDF reports)
-6. **Add user authentication** for multi-user scenarios
-
----
-
-## Team Integration
-
-- **Jack (Data Pipeline)**: Integrate JSON outputs into main.py
-- **Aman (RF)**: Customize threshold logic in status_engine.py
-- **Edward (CNN)**: Ensure output format matches disease detection needs
-- **Aneesh (Evaluation)**: Add metrics export to `/api/summary`
-
-All components are modular and can be customized independently.
