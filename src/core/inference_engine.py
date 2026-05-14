@@ -214,10 +214,9 @@ def analyze_plant_status(image_path, water_amount, weight, cnn_model, rf_model, 
     
     # Generate the Action Plan
     action_plan = {
-        "Needs_Water": "Yes" if rf_prediction == 1 else "No",
-        # We can still derive secondary inferences based on the data
-        "Needs_Fertilizer": "Yes" if weight < 450 else "No", # Arbitrary threshold for Demeter prototype
-        "Vision_Status": detected_status_vision
+        "Needs_Fertilizer": "Yes" if rf_prediction < 0.9 * weight else "No",
+        "Vision_Status": detected_status_vision,
+        "Predicted_Future_Weight": round(float(rf_prediction), 2)
     }
     
     # ==========================================

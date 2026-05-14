@@ -27,16 +27,31 @@ def summarise(cnn_out=None, rf_out=None, out_file=None, run_name=None):
     rows = []
 
     # CNN overall metrics
-    cnn_metrics_file = find_file_if_exists(cnn_out, ['cnn_overall_metrics.csv', 'overall_metrics.csv'])
-    if cnn_metrics_file:
-        cnn_df = pd.read_csv(cnn_metrics_file)
-        # flatten to single row
-        cnn_row = {'model': 'cnn'}
-        for c in cnn_df.columns:
-            cnn_row[c] = cnn_df.iloc[0][c]
-        if run_name:
-            cnn_row['run'] = run_name
-        rows.append(cnn_row)
+    # We now check for subdirectories 'primary' and 'baseline' since the suite was upgraded
+    for cnn_type in ['primary', 'baseline']:
+        cnn_sub_out = os.path.join(cnn_out, cnn_type)
+        if os.path.exists(cnn_sub_out):
+            cnn_metrics_file = find_file_if_exists(cnn_sub_out, ['cnn_overall_metrics.csv', 'overall_metrics.csv'])
+            if cnn_metrics_file:
+                cnn_df = pd.read_csv(cnn_metrics_file)
+                # flatten to single row
+                cnn_row = {'model': f'cnn_{cnn_type}'}
+                for c in cnn_df.columns:
+                    cnn_row[c] = cnn_df.iloc[0][c]
+                if run_name:
+                    cnn_row['run'] = run_name
+                rows.append(cnn_row)
+        else:
+            # Fallback for legacy runs without subdirectories
+            cnn_metrics_file = find_file_if_exists(cnn_out, ['cnn_overall_metrics.csv', 'overall_metrics.csv'])
+            if cnn_metrics_file and cnn_type == 'primary':
+                cnn_df = pd.read_csv(cnn_metrics_file)
+                cnn_row = {'model': 'cnn'}
+                for c in cnn_df.columns:
+                    cnn_row[c] = cnn_df.iloc[0][c]
+                if run_name:
+                    cnn_row['run'] = run_name
+                rows.append(cnn_row)
 
     # RF regression metrics
     rf_reg_file = find_file_if_exists(rf_out, ['rf_regression_metrics.csv', 'rf_regression.csv', 'rf_metrics_regression.csv'])

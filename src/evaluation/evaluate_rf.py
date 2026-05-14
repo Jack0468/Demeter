@@ -6,11 +6,26 @@ import joblib
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, accuracy_score, precision_recall_fscore_support, confusion_matrix
+from sklearn.model_selection import KFold, cross_val_score
 from pathlib import Path
 
 # --- DYNAMIC PROJECT ROOT RESOLUTION ---
 _current_dir = Path(__file__).resolve().parent
 PROJECT_ROOT = _current_dir.parent.parent if _current_dir.parent.name == "src" else _current_dir.parent
+
+def evaluate_rf_regressor(rf_model, X, y, cv_folds=5):
+    """Evaluates an RF Regressor using K-Fold cross validation and prints RMSE."""
+    print(f"Running {cv_folds}-Fold Cross Validation...")
+    kf = KFold(n_splits=cv_folds, shuffle=True, random_state=42)
+    scores = cross_val_score(rf_model, X, y, cv=kf, scoring='neg_mean_squared_error')
+    rmse_scores = np.sqrt(-scores)
+    
+    mean_rmse = np.mean(rmse_scores)
+    std_rmse = np.std(rmse_scores)
+    
+    print(f"K-Fold CV ({cv_folds} folds) RMSE: {mean_rmse:.4f} (+/- {std_rmse:.4f})")
+    return mean_rmse, std_rmse
+
 
 def evaluate_rf(model_path, csv_dataset_path, out_dir=None):
     if out_dir is None:
@@ -91,8 +106,10 @@ def evaluate_rf(model_path, csv_dataset_path, out_dir=None):
     rmse = np.sqrt(mse)
     mae = mean_absolute_error(y_true, y_pred)
     r2 = r2_score(y_true, y_pred)
+    
+    cv_mean_rmse, cv_std_rmse = evaluate_rf_regressor(model, X, y_true)
 
-    metrics = {'RMSE': rmse, 'MSE': mse, 'MAE': mae, 'R2': r2}
+    metrics = {'RMSE': rmse, 'CV_Mean_RMSE': cv_mean_rmse, 'CV_Std_RMSE': cv_std_rmse, 'MSE': mse, 'MAE': mae, 'R2': r2}
     pd.DataFrame([metrics]).to_csv(os.path.join(out_dir, 'rf_regression_metrics.csv'), index=False)
 
     # Predicted vs Actual plot
