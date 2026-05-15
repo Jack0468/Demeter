@@ -48,7 +48,10 @@ padding of image pixels to perform convolutions.
 
 evaluation. 
 
-fix connection to dashboard.html
+[x] fix connection to dashboard.html
+
+[x] check if we should use a SVM. -> defo yes for classification of health status
+*(Update: The SVM concept has been abandoned as it arbitrarily trained a model on output noise without true biological ground truth labels connecting environmental and visual streams).*
 
 REDO TODO
 FIX data dile directory structure 

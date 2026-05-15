@@ -14,9 +14,11 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 try:
-    from src.training.model_builder import train_and_save_cnn, train_and_save_rf, train_and_save_cnn_plantvillage, train_and_save_rf_danforth, train_tiller_cnn_regressor
+    from src.training.vision_models import train_and_save_cnn, train_and_save_cnn_plantvillage, train_tiller_cnn_regressor
+    from src.training.tabular_models import train_and_save_rf, train_and_save_rf_danforth
 except ModuleNotFoundError:
-    from model_builder import train_and_save_cnn, train_and_save_rf, train_and_save_cnn_plantvillage, train_and_save_rf_danforth, train_tiller_cnn_regressor
+    from vision_models import train_and_save_cnn, train_and_save_cnn_plantvillage, train_tiller_cnn_regressor
+    from tabular_models import train_and_save_rf, train_and_save_rf_danforth
 
 from scripts.setup_tiller_data import load_manual_tiller_data
 

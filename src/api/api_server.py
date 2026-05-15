@@ -297,7 +297,7 @@ def serve_dashboard():
     Returns:
         HTML: dashboard.html
     """
-    dashboard_path = str(PROJECT_ROOT / "frontend" / "dashboard.html")
+    dashboard_path = str(PROJECT_ROOT / "src" / "frontend" / "dashboard.html")
     if os.path.exists(dashboard_path):
         with open(dashboard_path, 'r') as f:
             return f.read(), 200
