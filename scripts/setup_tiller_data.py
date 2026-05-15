@@ -21,10 +21,19 @@ Use Case (Demeter Architecture):
 import os
 import glob
 import pandas as pd
+from pathlib import Path
 
-def load_manual_tiller_data(txt_filepath, images_dir):
+# --- DYNAMIC PROJECT ROOT RESOLUTION ---
+_current_dir = Path(__file__).resolve().parent
+PROJECT_ROOT = _current_dir.parent if _current_dir.name == "scripts" else _current_dir
+
+def load_manual_tiller_data(
+    txt_filepath=str(PROJECT_ROOT / "data" / "raw" / "environment" / "manual_measurements.txt"), 
+    images_dir=str(PROJECT_ROOT / "data" / "raw" / "vision" / "Dataset3")
+):
     """
     Loads Dataset 3 (Manual measurements) and links them to their PNG images.
+    Defaults point to the standard Demeter data ontology directories.
     """
     print(f"Loading Tiller Measurement data from {txt_filepath}...")
     

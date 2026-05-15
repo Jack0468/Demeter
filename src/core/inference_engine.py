@@ -232,7 +232,7 @@ def analyze_plant_status(image_path, water_amount, weight, cnn_model, rf_model, 
     result.update(action_plan) 
     return result
 
-def log_to_csv(data_dict, filepath="data/demeter_logs.csv"):
+def log_to_csv(data_dict, filepath="data/logs/inference_logs.csv"):
     """
     Appends the result dictionary to a CSV file.
     

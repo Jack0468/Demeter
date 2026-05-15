@@ -13,13 +13,10 @@ def expand_demeter_datasets():
     print("Starting Dataset Expansion Pipeline...\n")
     
     # 1. Setup local directories (Consistent with existing architecture)
-    base_data_dir = str(PROJECT_ROOT / 'data')
+    base_data_dir = str(PROJECT_ROOT / 'data' / 'raw')
     disease_dir = os.path.join(base_data_dir, 'plant_disease')
-    molecular_dir = os.path.join(base_data_dir, 'molecular_plant')
-    danforth_dir = os.path.join(base_data_dir, 'danforth_center')
     
-    for folder in [disease_dir, molecular_dir, danforth_dir]:
-        os.makedirs(folder, exist_ok=True)
+    os.makedirs(disease_dir, exist_ok=True)
 
     # --- 1. Kaggle: PlantVillage Disease Dataset ---
     print("1/3: Downloading PlantVillage Disease Dataset...")

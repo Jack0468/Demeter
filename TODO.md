@@ -1,33 +1,42 @@
 # Demeter Project - Delegated Action Plan
 
-## 1. Jack (Data Pipeline & Preprocessing)
-*Primary pipeline is built. The next steps involve execution and validation.*
+## 1. Jack (Data Pipeline & Architecture)
+*Core modularization is complete. Focus is now on strict data ontology and full-scale execution.*
 
-- [ ] **Full Data Run:** Run `main.py` against the full dataset on the external drive in WSL. Monitor for memory leaks during the Pandas merge or TensorFlow dataset generation.
-- [x] **Dataset 3 Handoff:** Provide the standalone `load_manual_tiller_data` function to Edward so he can immediately begin his next task without waiting on the 118 GB run.
-- [x] **Repository Cleanup:** Delete the entire `src/` directory (`src/layer1_cnn.py`, `src/layer2_health.py`, `src/layer3_rf.py`, `src/setup_data.py`) and `build_transfer_learning_cnn.py`.
-- [x] **Configuration Update:** Updated `config/config.json` legacy WSL paths (`/mnt/c/...`) and mapped all resources to the new strict `data/raw/` and `data/logs/` ontology.
+- [x] **Repository Cleanup:** Legacy flat scripts have been removed; project is cleanly modularized into `src/api`, `src/core`, `src/training`, and `src/evaluation`.
+- [x] **Dataset 3 Handoff:** `setup_tiller_data.py` is complete and dynamically links images to phenotypic tabular data.
+- [ ] **Data Ontology Enforcement:** Ensure the new strict `data/` structure (`data/raw/`, `data/processed/`, `data/logs/`) is created across WSL/production and config files are updated to match.
+- [ ] **Full Data Run:** Run the `main.py` pipeline against the full 118GB dataset on the external drive in WSL. Monitor for memory leaks.
 
-## 2. Aman (Random Forest & System Integration)
-*The RF model in `model_builder.py` was recently converted from a Classifier to a Regressor to align with the proposal goals.*
+## 2. Aman (System Integration & Random Forest)
+*The core web integration and rule-based systems are live.*
 
-- [x] **Inference Engine Update:** Update `inference_engine.py`. Rewrite `analyze_plant_status` to handle the new continuous output (predicting the plant's future weight/biomass) instead of binary 1/0.
-- [x] **Threshold Logic:** Establish new logic based on the regression output (e.g., if predicted future weight is < 90% of current weight, trigger a "Needs Fertilizer" warning).
+- [x] **Threshold Logic:** Rule-based health scoring and environmental thresholds successfully moved to `src/core/status_engine.py`.
+- [x] **Inference Engine Update:** Continuous growth target from the Danforth RF is integrated into the `generate_complete_diagnosis` JSON payload.
+- [ ] **Resolve Dataset Domain Mismatch:** Work with Jack to find a statistically valid way to correlate visual PlantVillage predictions with Danforth environmental predictions, as they currently assume independence.
 
 ## 3. Edward (CNN Architecture Development)
-*The primary CNN classifying `Water_Stressed` vs `Well_Watered` is built. The system needs deeper visual analytics for trajectory goals.*
+*CNN pipelines are robust, now shifting to continuous trajectory prediction.*
 
-- [x] **Tiller Count Regression:** Using Dataset 3 (the 58 manual images), build a secondary CNN architecture that predicts a continuous number (`tiller_count` or `leaf_angle`) directly from a visual input. *(Implemented and verified in `model_builder.py`)*
-- [x] **Species Classification Integration:** If still required, integrate the PlantVillage/PlantNet model as a parallel pipeline to the Setaria stress model.
+- [x] **Tiller Count Regression:** `train_tiller_cnn_regressor` is built in `model_builder.py` to predict continuous physical traits directly from pixels.
+- [x] **Disease Classification:** PlantVillage CNN is fully integrated into the unified inference pipeline.
+- [ ] **Bellwether Trajectory Mapping:** Transition the original Setaria model from predicting binary water stress to longitudinal tracking (mapping `snapshot` images over time).
 
-## 4. Aneesh (Evaluation Metrics & Testing)
-*The `model_evaluation.py` file is currently lagging behind the architectural changes.*
+## 4. SVM Integration (Health Status)
+- [x] **Phase 1 (Bootstrap Data):** Create script to generate the SVM training dataset from `status_engine.py` logic.
+- [ ] **Phase 2 (Training):** Build an SVM classifier (`train_health_svm_classifier`) in `model_builder.py` using `StandardScaler` and RBF kernel.
+- [ ] **Phase 3 (Inference Update):** Update `inference_engine.py` to route predictions through the SVM instead of the hardcoded `status_engine.py` logic.
 
-- [x] **Regressor Metrics:** Write an `evaluate_rf_regressor(rf_model, X_test, y_test)` function that calculates and prints Root Mean Square Error (RMSE).
-- [x] **Cross-Validation Strategy:** Implement k-fold cross-validation in the evaluation scripts to ensure models aren't overfitting to the WSL environment setup.
+## 5. Aneesh (Evaluation Metrics & Testing)
+*Evaluation tools are functional but need stricter statistical validation.*
+
+- [x] **Regressor Metrics:** `evaluate_rf.py` now successfully calculates RMSE, MAE, and R2 for the continuous models.
+- [ ] **Cross-Validation Strategy:** Implement k-fold cross-validation in the evaluation scripts to ensure models aren't overfitting to the WSL environment setup.
+- [ ] **Standardize Test Set Evaluation:** Update evaluation scripts to pull strictly from the `data/processed/test_sets/` partitions to prevent data leakage.
 
 
-- FROM JACK on 7/05/2026
+## FROM JACK on 12/05/2026
+## DO NOT TOUCH from here down
 
 verify correctness / accruacy.
 
@@ -44,6 +53,34 @@ evaluation.
 [x] check if we should use a SVM. -> defo yes for classification of health status
 *(Update: The SVM concept has been abandoned as it arbitrarily trained a model on output noise without true biological ground truth labels connecting environmental and visual streams).*
 
+REDO TODO
+FIX data dile directory structure 
+
+SVM:
+
+Must re interpret data availible and its useage.
+GOAL: use data / regressor model / CNN health to train SVM
+
 or if the outputs of the various models can be fed into a NN
 
 PROMPTS TODO:
+
+CRITICAL INFO TO CONSIDER:
+1. The "Frankenstein" Dataset Problem (Domain Mismatch)
+The most glaring critical flaw in your data strategy is that you are attempting to build a unified inference pipeline (inference_engine.py) using datasets that are entirely detached from one another in the real world:
+
+PlantVillage Data: Highly controlled, zoomed-in images of individual leaves used for disease classification (e.g., Tomato Early Blight).
+Danforth Data: Tabular multi-modal environmental data focusing on Temperature, Soil_Moisture, Sunlight_Hours, and a continuous Growth_Milestone.
+
+Bellwether Dataset: Longitudinal data tracking water amount, weight before, weight after, and snapshot images of full plants for stress detection.
+
+The Critique: You are merging predictions from a CNN trained on single leaves (PlantVillage) with an RF model trained on separate environmental data (Danforth). generate_complete_diagnosis stitches these together into a single JSON payload. This is biologically and statistically flawed. A plant's visual disease symptoms are directly correlated with its environment, but your models treat them as completely independent variables because the training datasets share no intersection.
+
+3. Structural Fragmentation and Clutter
+The data/ directory lacks a cohesive structure and is suffering from "dumping ground" syndrome. Based on the file paths hardcoded across your scripts:
+
+Raw vs. Processed Data: You have layer2_health_rgb/PlantVillage and layer3_environment/plant_growth_data.csv acting as raw sources, but then prepare_bellwether_test_set.py dumps bellwether_rf_test.csv and bellwether_test_images/ straight into the root data/ folder.
+Artifact Clutter: metadata_cache.pkl is sitting at the root of data/.
+Conflicting Log Files: inference_engine.py defines a fallback log path of data/demeter_logs.csv, while SETUP_DASHBOARD.md and the SVM script refer to data/plant_diagnostics.csv. Having multiple overlapping CSV files for logging predictions will lead to missing historical data when evaluating the system's actual performance.
+
+The Critique: The evaluation scripts (evaluate_rf.py) and inference logic are being twisted to handle datasets that don't share the same schema. If the goal is a continuous trajectory prediction, standardizing the target variable (e.g., standardizing on "biomass delta" or "weight after") across all tabular datasets before training is critical. Right now, the data pipeline is duct-taping over schema mismatches.
