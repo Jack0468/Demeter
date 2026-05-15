@@ -35,7 +35,7 @@
 - [ ] **Standardize Test Set Evaluation:** Update evaluation scripts to pull strictly from the `data/processed/test_sets/` partitions to prevent data leakage.
 
 
-## FROM JACK on 12/05/2026
+## FROM JACK on 15/05/2026
 ## DO NOT TOUCH from here down
 
 verify correctness / accruacy.
@@ -53,11 +53,7 @@ evaluation.
 [x] check if we should use a SVM. -> defo yes for classification of health status
 *(Update: The SVM concept has been abandoned as it arbitrarily trained a model on output noise without true biological ground truth labels connecting environmental and visual streams).*
 
-REDO TODO
-FIX data dile directory structure 
-
 SVM:
-
 Must re interpret data availible and its useage.
 GOAL: use data / regressor model / CNN health to train SVM
 
@@ -75,6 +71,10 @@ Danforth Data: Tabular multi-modal environmental data focusing on Temperature, S
 Bellwether Dataset: Longitudinal data tracking water amount, weight before, weight after, and snapshot images of full plants for stress detection.
 
 The Critique: You are merging predictions from a CNN trained on single leaves (PlantVillage) with an RF model trained on separate environmental data (Danforth). generate_complete_diagnosis stitches these together into a single JSON payload. This is biologically and statistically flawed. A plant's visual disease symptoms are directly correlated with its environment, but your models treat them as completely independent variables because the training datasets share no intersection.
+
+POTENTIAL SOLUTION?
+investigate these datasets for feasibility 
+https://github.com/awesomedata/awesome-public-datasets#agriculture
 
 3. Structural Fragmentation and Clutter
 The data/ directory lacks a cohesive structure and is suffering from "dumping ground" syndrome. Based on the file paths hardcoded across your scripts:
