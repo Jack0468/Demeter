@@ -16,7 +16,7 @@ Quick examples (zsh)
 
 - Full CNN evaluator:
 ```bash
-python3 src/evaluation/evaluate_cnn.py --cnn models/demeter_cnn.keras --test_dir data/raw_images/test_set --out_dir evaluation_outputs/cnn --mode full
+python src/evaluation/evaluate_cnn.py --cnn models/demeter_cnn.keras --test_dir data/raw/vision/PlantVillage --out_dir evaluation_outputs/cnn --mode full
 ```
 
 - Simple CNN quick-check (faster / minimal outputs):
