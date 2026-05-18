@@ -5,6 +5,15 @@ import pandas as pd
 import sys
 from pathlib import Path
 
+'''
+Train all models as required based on config.json in the 
+config directory, which will run sequentially and save
+the trained models to the models directory.
+
+Use 2>&1 to log all output to a file for debugging.
+Example: python src/training/train_pipeline.py > logs/train_log.txt 2>&1
+'''
+
 # --- DYNAMIC PROJECT ROOT RESOLUTION ---
 _current_dir = Path(__file__).resolve().parent
 PROJECT_ROOT = _current_dir.parent.parent if _current_dir.parent.name == "src" else _current_dir.parent
@@ -14,13 +23,25 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 try:
-    from src.training.vision_models import train_and_save_cnn, train_and_save_cnn_plantvillage, train_tiller_cnn_regressor
+    from src.training.vision_models import train_and_save_cnn, train_and_save_cnn_plantvillage, train_tiller_cnn_regressor, train_biomass_cnn_regressor
     from src.training.tabular_models import train_and_save_rf, train_and_save_rf_danforth
+    from src.training.train_kmeans_cluster import train_health_clusters
 except ModuleNotFoundError:
-    from vision_models import train_and_save_cnn, train_and_save_cnn_plantvillage, train_tiller_cnn_regressor
+    from vision_models import train_and_save_cnn, train_and_save_cnn_plantvillage, train_tiller_cnn_regressor, train_biomass_cnn_regressor
     from tabular_models import train_and_save_rf, train_and_save_rf_danforth
+    from train_kmeans_cluster import train_health_clusters
 
-from scripts.setup_tiller_data import load_manual_tiller_data
+try:
+    from scripts.setup_tiller_data import load_manual_tiller_data
+except ModuleNotFoundError:
+    print("[!] Warning: scripts.setup_tiller_data not found. Tiller CNN training will be skipped.")
+    load_manual_tiller_data = None
+
+try:
+    from scripts.setup_biomass_data import load_biomass_data
+except ModuleNotFoundError:
+    print("[!] Warning: scripts.setup_biomass_data not found. Biomass CNN training will be skipped.")
+    load_biomass_data = None
 
 # --- CONFIGURATION LOADING ---
 config_path = PROJECT_ROOT / 'config.json'
@@ -42,6 +63,8 @@ train_danforth_rf = config['training']['models'].get('danforth_rf', False)
 train_bellwether_cnn = config['training']['models'].get('bellwether_cnn', False)
 train_bellwether_rf = config['training']['models'].get('bellwether_rf', False)
 train_tiller_cnn = config['training']['models'].get('tiller_cnn', False)
+train_kmeans = config['training']['models'].get('kmeans', False)
+train_biomass_cnn = config['training']['models'].get('biomass_cnn', False)
 
 cnn_model_path = str(PROJECT_ROOT / config['paths']['cnn_model'])
 rf_model_path = str(PROJECT_ROOT / config['paths']['rf_model'])
@@ -58,18 +81,29 @@ tiller_txt_path = str(PROJECT_ROOT / config['paths'].get('tiller_data_path', '')
 tiller_img_dir = str(PROJECT_ROOT / config['paths'].get('tiller_data_image_path', ''))
 tiller_cnn_model_path = str(PROJECT_ROOT / config['paths'].get('tiller_cnn_model_path', 'models/demeter_cnn_tiller.keras'))
 
+biomass_csv_path = str(PROJECT_ROOT / config['paths'].get('biomass_data_csv', 'data/raw/vision/Manual_ biomass_measurements/manual_biomass_samples.csv'))
+biomass_img_dir = str(PROJECT_ROOT / config['paths'].get('biomass_data_image_path', 'data/raw/vision/Manual_ biomass_measurements/image'))
+biomass_cnn_model_path = str(PROJECT_ROOT / config['paths'].get('biomass_cnn_model_path', 'models/demeter_cnn_biomass.keras'))
 
-def load_bellwether_metadata(base_dir):
+kmeans_model_path = str(PROJECT_ROOT / config['paths'].get('kmeans_model_path', 'models/health_clusters.joblib'))
+
+
+def load_bellwether_metadata(images_dir):
     """
     Reads and merges the SnapshotInfo and TileInfo CSVs to link 
     image filenames with their physical plant measurements.
+
+    The CSVs live in the Bellwether root (parent of images_dir),
+    while images_dir points to the images/ subdirectory.
     """
     print("Loading Bellwether metadata CSVs...")
-    snapshot_path = os.path.join(base_dir, "SnapshotInfo.csv")
-    tile_path = os.path.join(base_dir, "TileInfo.csv")
+    # CSVs sit one level above the images directory
+    csv_dir = str(Path(images_dir).parent)
+    snapshot_path = os.path.join(csv_dir, "SnapshotInfo.csv")
+    tile_path = os.path.join(csv_dir, "TileInfo.csv")
     
     if not os.path.exists(snapshot_path) or not os.path.exists(tile_path):
-        print(f"[!] ERROR: Missing CSV files in {base_dir}")
+        print(f"[!] ERROR: Missing CSV files in {csv_dir}")
         return None
 
     # Load the CSVs
@@ -148,12 +182,38 @@ def main():
 
     if train_tiller_cnn or not os.path.exists(tiller_cnn_model_path):
         print("\n[!] Tiller CNN Regressor not found or retrain forced. Training...")
-        tiller_df = load_manual_tiller_data(tiller_txt_path, tiller_img_dir)
-        if tiller_df is not None and not tiller_df.empty:
-            train_tiller_cnn_regressor(tiller_df, tiller_cnn_model_path, epochs=config['training']['epochs'])
-            print("[!] Tiller CNN Regressor training complete.\n")
+        if load_manual_tiller_data is None:
+            print("[!] Tiller data loader unavailable. Skipping Tiller CNN training.")
         else:
-            print("[!] Failed to load Tiller dataset. Skipping Tiller CNN training.")
+            tiller_df = load_manual_tiller_data(tiller_txt_path, tiller_img_dir)
+            if tiller_df is not None and not tiller_df.empty:
+                train_tiller_cnn_regressor(tiller_df, tiller_cnn_model_path, epochs=config['training']['epochs'])
+                print("[!] Tiller CNN Regressor training complete.\n")
+            else:
+                print("[!] Failed to load Tiller dataset. Skipping Tiller CNN training.")
+
+    if train_biomass_cnn or not os.path.exists(biomass_cnn_model_path):
+        print("\n[!] Biomass CNN Regressor not found or retrain forced. Training...")
+        if load_biomass_data is None:
+            print("[!] Biomass data loader unavailable. Skipping Biomass CNN training.")
+        else:
+            biomass_df = load_biomass_data(biomass_csv_path, biomass_img_dir, multi_angle=True)
+            if biomass_df is not None and not biomass_df.empty:
+                train_biomass_cnn_regressor(biomass_df, biomass_cnn_model_path, target='fresh_weight', epochs=config['training']['epochs'])
+                print("[!] Biomass CNN Regressor training complete.\n")
+            else:
+                print("[!] Failed to load Biomass dataset. Skipping Biomass CNN training.")
+
+    if train_kmeans or not os.path.exists(kmeans_model_path):
+        print("\n[!] K-Means health cluster model not found or retrain forced. Training...")
+        # Use Danforth CSV as the primary clustering data source.
+        # train_health_clusters gracefully handles missing/mismatched columns.
+        if os.path.exists(danforth_csv_path):
+            train_health_clusters(danforth_csv_path, kmeans_model_path, n_clusters=3)
+            print("[!] K-Means clustering complete.\n")
+        else:
+            print("[!] Danforth CSV not found — K-Means training skipped. Provide data at:")
+            print(f"    {danforth_csv_path}")
 
 
 if __name__ == "__main__":
