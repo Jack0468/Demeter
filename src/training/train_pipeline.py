@@ -11,7 +11,7 @@ config directory, which will run sequentially and save
 the trained models to the models directory.
 
 Use 2>&1 to log all output to a file for debugging.
-Example: python src/training/train_pipeline.py > train_log.txt 2>&1
+Example: python src/training/train_pipeline.py > logs/train_log.txt 2>&1
 '''
 
 # --- DYNAMIC PROJECT ROOT RESOLUTION ---
@@ -88,17 +88,22 @@ biomass_cnn_model_path = str(PROJECT_ROOT / config['paths'].get('biomass_cnn_mod
 kmeans_model_path = str(PROJECT_ROOT / config['paths'].get('kmeans_model_path', 'models/health_clusters.joblib'))
 
 
-def load_bellwether_metadata(base_dir):
+def load_bellwether_metadata(images_dir):
     """
     Reads and merges the SnapshotInfo and TileInfo CSVs to link 
     image filenames with their physical plant measurements.
+
+    The CSVs live in the Bellwether root (parent of images_dir),
+    while images_dir points to the images/ subdirectory.
     """
     print("Loading Bellwether metadata CSVs...")
-    snapshot_path = os.path.join(base_dir, "SnapshotInfo.csv")
-    tile_path = os.path.join(base_dir, "TileInfo.csv")
+    # CSVs sit one level above the images directory
+    csv_dir = str(Path(images_dir).parent)
+    snapshot_path = os.path.join(csv_dir, "SnapshotInfo.csv")
+    tile_path = os.path.join(csv_dir, "TileInfo.csv")
     
     if not os.path.exists(snapshot_path) or not os.path.exists(tile_path):
-        print(f"[!] ERROR: Missing CSV files in {base_dir}")
+        print(f"[!] ERROR: Missing CSV files in {csv_dir}")
         return None
 
     # Load the CSVs
