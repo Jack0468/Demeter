@@ -68,9 +68,4 @@ Notes
 - The scripts make conservative assumptions about dataset layout. If your files are located differently or your tabular CSV has different column names, update the arguments or the script accordingly.
 
 JACKS RUNNING:
-python src/evaluation/run_evaluation_suite.py \
-  --cnn_model models/demeter_cnn_plantvillage.keras \
-  --cnn_test_dir data/layer2_health_rgb/PlantVillage \
-  --rf_model models/demeter_rf_danforth.joblib \
-  --rf_csv data/layer3_environment/plant_growth_data.csv \
-  --run_name demeter_production_models
+python src/evaluation/run_evaluation_suite.py --cnn_model models/demeter_cnn_plantvillage.keras --cnn_test_dir data/raw/vision/PlantVillage --rf_model models/demeter_rf_danforth.joblib --rf_csv data/raw/enviroment/danforth_growth.csv --kmeans_model models/health_clusters.joblib --kmeans_csv data/raw/enviroment/danforth_growth.csv --run_name eval_run_1 > logs/eval_log.txt 2>&1
