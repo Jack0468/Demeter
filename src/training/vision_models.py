@@ -362,3 +362,100 @@ def train_custom_baseline_cnn(train_ds, val_ds, num_classes, save_path, img_heig
     print(f"Baseline CNN successfully saved to {save_path}")
     
     return True
+
+
+# ==========================================
+# 6. CNN TRAINING PIPELINE - BIOMASS REGRESSION (Dataset 6)
+# ==========================================
+def train_biomass_cnn_regressor(df, save_path, target='fresh_weight', img_height=150, img_width=150, epochs=10):
+    """
+    Trains a CNN Regressor to predict continuous biomass (fresh or dry weight)
+    from plant images.
+
+    Uses the multi-angle expanded DataFrame produced by setup_biomass_data.py,
+    where each plant contributes up to 4 side-view images, effectively
+    quadrupling the 41-sample dataset to up to 164 training examples.
+
+    Args:
+        df:          DataFrame from load_biomass_data() with 'filepath' and
+                     target weight columns.
+        save_path:   Path to save the trained .keras model.
+        target:      Column to regress on — 'fresh_weight' or 'dry_weight'.
+        img_height:  Input image height.
+        img_width:   Input image width.
+        epochs:      Number of training epochs.
+    """
+    print(f"Initializing CNN Regressor Training Pipeline (Biomass — target: {target})...")
+
+    if target not in df.columns:
+        print(f"[!] ERROR: Target column '{target}' not found in dataframe.")
+        return False
+
+    df_clean = df.dropna(subset=['filepath', target]).copy()
+    df_clean = df_clean[df_clean['filepath'].apply(lambda p: os.path.exists(p) and os.path.getsize(p) > 0)]
+
+    if df_clean.empty:
+        print("[!] ERROR: No valid image paths found for biomass dataset.")
+        return False
+
+    print(f"Loaded {len(df_clean)} image records ({df_clean['plant_id'].nunique()} unique plants) for Biomass Regression training")
+
+    # Split by plant_id to avoid data leakage (same plant across train/val)
+    unique_plants = df_clean['plant_id'].unique()
+    n_val = max(1, int(len(unique_plants) * 0.2))
+    rng = np.random.default_rng(seed=42)
+    val_plants = set(rng.choice(unique_plants, size=n_val, replace=False))
+
+    train_df = df_clean[~df_clean['plant_id'].isin(val_plants)]
+    val_df   = df_clean[df_clean['plant_id'].isin(val_plants)]
+    print(f"Training on {len(train_df)} images ({len(train_df['plant_id'].unique())} plants), "
+          f"validating on {len(val_df)} images ({len(val_df['plant_id'].unique())} plants).")
+
+    def process_path(file_path, label):
+        img = tf.io.read_file(file_path)
+        img = tf.image.decode_png(img, channels=3)
+        img = tf.image.resize(img, [img_height, img_width])
+        return img, label
+
+    def create_dataset(dataframe, shuffle=False):
+        paths  = dataframe['filepath'].values
+        labels = dataframe[target].values.astype(np.float32)
+        ds = tf.data.Dataset.from_tensor_slices((paths, labels))
+        if shuffle:
+            ds = ds.shuffle(buffer_size=len(paths), seed=42)
+        ds = ds.map(process_path, num_parallel_calls=tf.data.AUTOTUNE)
+        ds = ds.batch(16).prefetch(tf.data.AUTOTUNE)
+        return ds
+
+    train_ds = create_dataset(train_df, shuffle=True)
+    val_ds   = create_dataset(val_df,   shuffle=False)
+
+    # Architecture: MobileNetV2 backbone + regression head
+    base_model = MobileNetV2(input_shape=(img_height, img_width, 3), include_top=False, weights='imagenet')
+    base_model.trainable = False
+
+    augmenter = get_augmenter(img_height, img_width)
+
+    model = models.Sequential([
+        augmenter,
+        base_model,
+        layers.GlobalAveragePooling2D(),
+        layers.Dense(128, activation='relu'),
+        layers.Dropout(0.3),
+        layers.Dense(64, activation='relu'),
+        layers.Dense(1, activation='linear')  # Continuous output: grams
+    ])
+
+    model.compile(optimizer='adam', loss='mean_squared_error', metrics=['mae'])
+
+    print(f"Training Biomass CNN Regressor for {epochs} epochs...")
+    model.fit(train_ds, validation_data=val_ds, epochs=epochs)
+
+    loss, mae = model.evaluate(val_ds, verbose=0)
+    print(f"Biomass CNN Regressor ({target}) — Val MSE: {loss:.4f}, Val MAE: {mae:.4f} g")
+
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    model.save(save_path)
+    print(f"Biomass CNN Regressor successfully saved to {save_path}")
+
+    return True

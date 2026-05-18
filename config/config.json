@@ -5,12 +5,16 @@
     "csv_log": "data/logs/inference_logs.csv",
     "bellwether_images_dir": "data/raw/vision/Bellwether/images",
     "plantvillage_dir": "data/raw/vision/PlantVillage",
-    "danforth_csv_path": "data/raw/environment/danforth_growth.csv",
+    "danforth_csv_path": "data/raw/enviroment/danforth_growth.csv",
     "tiller_data_image_path": "data/raw/vision/images_tiller",
-    "tiller_data_path": "data/raw/environment/tiller_58image_manualmeasure_tillercount_tillerangle_leaf_angle.txt",
+    "tiller_data_path": "data/raw/enviroment/tiller_58image_manualmeasure_tillercount_tillerangle_leaf_angle.txt",
     "plantvillage_cnn_model_path": "models/demeter_cnn_plantvillage.keras",
     "danforth_rf_model_path": "models/demeter_rf_danforth.joblib",
-    "tiller_cnn_model_path": "models/demeter_cnn_tiller.keras"
+    "tiller_cnn_model_path": "models/demeter_cnn_tiller.keras",
+    "kmeans_model_path": "models/health_clusters.joblib",
+    "biomass_data_csv": "data/raw/vision/Manual_ biomass_measurements/manual_biomass_samples.csv",
+    "biomass_data_image_path": "data/raw/vision/Manual_ biomass_measurements/image",
+    "biomass_cnn_model_path": "models/demeter_cnn_biomass.keras"
   },
   "training": {
     "epochs": 5,
@@ -19,7 +23,9 @@
       "danforth_rf": true,
       "bellwether_cnn": true,
       "bellwether_rf": true,
-      "tiller_cnn": true
+      "tiller_cnn": true,
+      "kmeans": true,
+      "biomass_cnn": true
     }
   }
 }

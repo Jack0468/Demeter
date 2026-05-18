@@ -299,8 +299,8 @@ def serve_dashboard():
     """
     dashboard_path = str(PROJECT_ROOT / "src" / "frontend" / "dashboard.html")
     if os.path.exists(dashboard_path):
-        with open(dashboard_path, 'r') as f:
-            return f.read(), 200
+        with open(dashboard_path, 'r', encoding='utf-8') as f:
+            return f.read(), 200, {'Content-Type': 'text/html; charset=utf-8'}
     else:
         return jsonify({"error": "dashboard.html not found"}), 404
 
