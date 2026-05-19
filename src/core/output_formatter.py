@@ -24,7 +24,7 @@ class OutputFormatter:
             output_dir: Directory to store JSON outputs
         """
         self.output_dir = output_dir or str(PROJECT_ROOT / "data/outputs")
-        os.makedirs(output_dir, exist_ok=True)
+        os.makedirs(self.output_dir, exist_ok=True)
     
     @staticmethod
     def format_disease_detection(

@@ -2,652 +2,281 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Demeter — Plant Health Management</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: sans-serif; background: #f4f6f2; color: #1a1a1a; }
-
-    header {
-      background: #2d6a4f;
-      color: white;
-      padding: 16px 24px;
-    }
-    header h1 { font-size: 1.4rem; }
-    header p  { font-size: 0.85rem; opacity: 0.8; margin-top: 4px; }
-
-    main {
-      max-width: 1100px;
-      margin: 24px auto;
-      padding: 0 16px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-    }
-
-    .card {
-      background: white;
-      border-radius: 8px;
-      padding: 20px;
-      border: 1px solid #dde8da;
-    }
-    .card h2 { font-size: 1rem; margin-bottom: 14px; color: #2d6a4f; }
-
-    /* Image upload placeholder */
-    .image-box {
-      width: 100%;
-      height: 180px;
-      background: #eef4eb;
-      border: 2px dashed #95c9a4;
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #888;
-      font-size: 0.9rem;
-      margin-bottom: 12px;
-    }
-    .image-box input { display: none; }
-    .upload-btn {
-      background: #2d6a4f;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.85rem;
-    }
-
-    /* Sensor metrics */
-    .sensors {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin-top: 16px;
-    }
-    .metric {
-      background: #eef4eb;
-      border-radius: 6px;
-      padding: 12px;
-      text-align: center;
-    }
-    .metric .label { font-size: 0.75rem; color: #555; margin-bottom: 4px; }
-    .metric .value { font-size: 1.2rem; font-weight: bold; color: #2d6a4f; }
-
-    /* Classification */
-    .species-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-    }
-    .species-name { font-size: 1.3rem; font-weight: bold; }
-    .confidence { font-size: 0.85rem; color: #555; }
-    .progress-bar-bg {
-      background: #eef4eb;
-      border-radius: 999px;
-      height: 10px;
-      width: 100%;
-    }
-    .progress-bar-fill {
-      background: #2d6a4f;
-      height: 10px;
-      border-radius: 999px;
-      width: 91%;
-    }
-
-    /* Status badge */
-    .status {
-      display: inline-block;
-      padding: 6px 14px;
-      border-radius: 4px;
-      font-weight: bold;
-      font-size: 0.9rem;
-      margin: 14px 0 6px;
-    }
-    .status.struggling { background: #fde8e8; color: #b91c1c; }
-    .status.thriving   { background: #d1fae5; color: #065f46; }
-
-    /* Action plan */
-    .actions {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin-top: 8px;
-    }
-    .action-item {
-      background: #eef4eb;
-      border-radius: 6px;
-      padding: 10px;
-      text-align: center;
-      font-size: 0.8rem;
-    }
-    .action-item .icon { font-size: 1.3rem; display: block; margin-bottom: 4px; }
-    .action-item.alert { background: #fde8e8; }
-
-    /* System command */
-    .command-box {
-      margin-top: 12px;
-      background: #fff7ed;
-      border-left: 4px solid #f97316;
-      padding: 10px 14px;
-      border-radius: 0 6px 6px 0;
-      font-weight: bold;
-      font-size: 0.9rem;
-      color: #c2410c;
-    }
-
-    /* Log table */
-    .full-width {
-      grid-column: 1 / -1;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.85rem;
-    }
-    th {
-      background: #eef4eb;
-      text-align: left;
-      padding: 8px 10px;
-      border-bottom: 2px solid #dde8da;
-      color: #2d6a4f;
-    }
-    td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; }
-    tr:last-child td { border-bottom: none; }
-    .tag-struggling { color: #b91c1c; font-weight: bold; }
-    .tag-thriving   { color: #065f46; font-weight: bold; }
-    /* Status badge critical */
-    .status.critical { background: #fee2e2; color: #7f1d1d; }
-
-    /* Loading spinner */
-    .loading-spinner {
-      display: inline-block;
-      width: 16px;
-      height: 16px;
-      border: 2px solid #eee;
-      border-top: 2px solid #2d6a4f;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-    /* API status indicator */
-    .api-status {
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      padding: 8px 12px;
-      border-radius: 4px;
-      font-size: 0.8rem;
-      z-index: 1000;
-    }
-    .api-status.online { background: #d1fae5; color: #065f46; }
-    .api-status.offline { background: #fde8e8; color: #b91c1c; }
-
-    /* Info box */
-    .info-box {
-      background: #e8f3ff;
-      border-left: 4px solid #0284c7;
-      padding: 10px 14px;
-      border-radius: 0 4px 4px 0;
-      font-size: 0.85rem;
-      color: #0c4a6e;
-      margin-bottom: 12px;
-    }
-  </style>
-  <script>
-    // API Configuration
-    const API_BASE = window.location.origin + '/api';
-    const REFRESH_INTERVAL = 5000; // 5 seconds
-
-    // Global state
-    let currentDiagnosis = null;
-    let isApiOnline = false;
-
-    // ============================
-    // API Communication Functions
-    // ============================
-
-    async function checkApiHealth() {
-      try {
-        const response = await fetch(API_BASE + '/health', { method: 'GET' });
-        isApiOnline = response.ok;
-        updateApiStatus();
-        return response.ok;
-      } catch (err) {
-        isApiOnline = false;
-        updateApiStatus();
-        return false;
-      }
-    }
-
-    async function fetchLatestDiagnosis() {
-      try {
-        const response = await fetch(API_BASE + '/latest');
-        if (!response.ok) {
-          if (response.status === 404) {
-            console.log('No diagnosis available yet');
-            return null;
-          }
-          throw new Error(`HTTP ${response.status}`);
-        }
-        const data = await response.json();
-        currentDiagnosis = data;
-        return data;
-      } catch (err) {
-        console.error('Error fetching latest diagnosis:', err);
-        return null;
-      }
-    }
-
-    async function fetchDiagnosisHistory(limit = 20) {
-      try {
-        const response = await fetch(API_BASE + `/history?limit=${limit}`);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-        return data.records || [];
-      } catch (err) {
-        console.error('Error fetching history:', err);
-        return [];
-      }
-    }
-
-    // ============================
-    // UI Update Functions
-    // ============================
-
-    function updateApiStatus() {
-      const indicator = document.getElementById('api-status');
-      if (indicator) {
-        indicator.className = `api-status ${isApiOnline ? 'online' : 'offline'}`;
-        indicator.textContent = isApiOnline ? '● Online' : '● Offline';
-      }
-    }
-
-    function updateSensorMetrics(sensors) {
-      if (!sensors) return;
-
-      const temperature = document.querySelector('[data-metric="temperature"] .value');
-      if (temperature && sensors.temperature !== undefined) {
-        temperature.textContent = sensors.temperature.toFixed(1) + ' °C';
-      }
-
-      const moisture = document.querySelector('[data-metric="moisture"] .value');
-      if (moisture && sensors.soil_moisture !== undefined) {
-        moisture.textContent = sensors.soil_moisture.toFixed(1) + ' %';
-      }
-
-      const sunlight = document.querySelector('[data-metric="sunlight"] .value');
-      if (sunlight && sensors.sunlight_hours !== undefined) {
-        sunlight.textContent = sensors.sunlight_hours.toFixed(1) + ' hrs';
-      }
-    }
-
-    function updateDiseaseDetection(cnnResult) {
-      if (!cnnResult) return;
-
-      const disease = document.querySelector('[data-section="disease-name"]');
-      if (disease) {
-        disease.textContent = cnnResult.primary_disease || 'Unknown';
-      }
-
-      const conf = document.querySelector('[data-section="disease-confidence"]');
-      if (conf) {
-        const percentage = (cnnResult.confidence * 100).toFixed(0);
-        conf.textContent = `Disease confidence: ${percentage}%`;
-      }
-
-      const bar = document.querySelector('[data-section="disease-bar"]');
-      if (bar) {
-        const width = (cnnResult.confidence * 100).toFixed(0);
-        bar.style.width = width + '%';
-        bar.style.background = cnnResult.confidence > 0.7 ? '#b91c1c' : '#f97316';
-      }
-    }
-
-    function updateOverallStatus(diagnosis) {
-      if (!diagnosis) return;
-
-      const status = document.querySelector('[data-section="overall-status"]');
-      if (status && diagnosis.overall_status) {
-        status.className = `status ${diagnosis.overall_status.toLowerCase()}`;
-        status.textContent = `Overall Status: ${diagnosis.overall_status}`;
-      }
-
-      const score = document.querySelector('[data-section="health-score"]');
-      if (score && diagnosis.health_score !== undefined) {
-        score.textContent = `Health Score: ${diagnosis.health_score}/100`;
-      }
-    }
-
-    function updateStressDiagnosis(stressDiag) {
-      if (!stressDiag) return;
-
-      const metrics = {
-        'moisture': stressDiag.moisture_stress,
-        'temperature': stressDiag.temperature_stress,
-        'light': stressDiag.light_deficit,
-        'nutrient': stressDiag.nutrient_status
-      };
-
-      for (const [key, value] of Object.entries(metrics)) {
-        const elem = document.querySelector(`[data-stress="${key}"] .value`);
-        if (elem) {
-          elem.textContent = value || 'Unknown';
-          // Apply color coding
-          const metric = document.querySelector(`[data-stress="${key}"]`);
-          if (metric) {
-            metric.style.background = value === 'High' ? '#fde8e8' : '#eef4eb';
-            if (elem) {
-              elem.style.color = value === 'High' ? '#b91c1c' : '#2d6a4f';
-            }
-          }
-        }
-      }
-    }
-
-    function updateRecommendations(recommendations) {
-      if (!recommendations) return;
-
-      const container = document.querySelector('[data-section="recommendations"]');
-      if (!container) return;
-
-      container.innerHTML = recommendations.slice(0, 3).map(rec => `
-        <div class="action-item${rec.urgency === 'critical' ? ' alert' : ''}">
-          <span class="icon">${rec.icon || '→'}</span>
-          ${rec.action}
-        </div>
-      `).join('');
-    }
-
-    function updateSystemCommand(command) {
-      if (!command) return;
-
-      const elem = document.querySelector('[data-section="system-command"]');
-      if (elem) {
-        elem.textContent = `System Command: ${command}`;
-      }
-    }
-
-    function updateTrajectory(trajectory) {
-      if (!trajectory) return;
-
-      const days = [3, 5, 7];
-      days.forEach(day => {
-        const elem = document.querySelector(`[data-trajectory-day="${day}"] .value`);
-        if (elem) {
-          elem.textContent = trajectory[day] || 'Unknown';
-          // Color coding
-          const color = trajectory[day] === 'Thriving' ? '#065f46' :
-                       trajectory[day] === 'Fair' ? '#b45309' : '#b91c1c';
-          elem.style.color = color;
-        }
-      });
-    }
-
-    function populateDiagnosisLog(history) {
-      if (!history || history.length === 0) return;
-
-      const tbody = document.querySelector('[data-section="log-table"] tbody');
-      if (!tbody) return;
-
-      // Build rows from history (latest first)
-      const rows = history.reverse().slice(0, 10).map(record => {
-        const timestamp = new Date(record.timestamp).toLocaleString();
-        const disease = record.cnn_result?.primary_disease || 'None';
-        const status = record.overall_status || 'Unknown';
-        const moisture = record.sensors?.soil_moisture?.toFixed(1) || '--';
-        const temp = record.sensors?.temperature?.toFixed(1) || '--';
-
-        return `
-          <tr>
-            <td>${timestamp}</td>
-            <td>Plant</td>
-            <td>${disease}</td>
-            <td class="tag-${status.toLowerCase()}">${status}</td>
-            <td>${moisture}</td>
-            <td>${temp}</td>
-          </tr>
-        `;
-      }).join('');
-
-      tbody.innerHTML = rows;
-    }
-
-    // ============================
-    // Main Refresh Function
-    // ============================
-
-    async function refreshDashboard() {
-      await checkApiHealth();
-      
-      if (!isApiOnline) {
-        console.warn('API is offline, skipping dashboard update');
-        return;
-      }
-
-      const diagnosis = await fetchLatestDiagnosis();
-      if (!diagnosis) {
-        console.log('No diagnosis to display yet');
-        return;
-      }
-
-      // Update all sections
-      updateSensorMetrics(diagnosis.sensors);
-      updateDiseaseDetection(diagnosis.cnn_result);
-      updateOverallStatus(diagnosis);
-      updateStressDiagnosis(diagnosis.stress_diagnosis);
-      updateRecommendations(diagnosis.recommendations);
-      updateSystemCommand(diagnosis.system_command);
-      updateTrajectory(diagnosis.trajectory_7day);
-
-      // Update log with history
-      const history = await fetchDiagnosisHistory(10);
-      populateDiagnosisLog(history);
-    }
-
-    // ============================
-    // Initialization
-    // ============================
-
-    document.addEventListener('DOMContentLoaded', async () => {
-      // Initial check
-      await checkApiHealth();
-      await refreshDashboard();
-
-      // Set up periodic refresh
-      setInterval(refreshDashboard, REFRESH_INTERVAL);
-
-      // Setup image upload functionality
-      const fileInput = document.getElementById('image-upload-input');
-      const analyzeBtn = document.getElementById('analyze-btn');
-      const imagePreview = document.getElementById('image-preview');
-      const previewText = document.getElementById('preview-text');
-      let selectedFile = null;
-
-      if (fileInput) {
-        fileInput.addEventListener('change', (e) => {
-          const file = e.target.files[0];
-          if (file) {
-            selectedFile = file;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-              imagePreview.src = e.target.result;
-              imagePreview.style.display = 'block';
-              previewText.style.display = 'none';
-              analyzeBtn.style.display = 'inline-block';
-            };
-            reader.readAsDataURL(file);
-          }
-        });
-      }
-
-      if (analyzeBtn) {
-        analyzeBtn.addEventListener('click', async () => {
-          if (!selectedFile) return;
-          analyzeBtn.textContent = 'Analyzing...';
-          analyzeBtn.disabled = true;
-
-          const formData = new FormData();
-          formData.append('image', selectedFile);
-          
-          // Passing mocked sensor data for analysis. Real implementations might bind this to live sensors.
-          formData.append('temperature', (20 + Math.random() * 10).toFixed(1));
-          formData.append('soil_moisture', (30 + Math.random() * 40).toFixed(1));
-          formData.append('sunlight_hours', (3 + Math.random() * 5).toFixed(1));
-          formData.append('humidity', 55.0);
-
-          try {
-            const response = await fetch('http://localhost:5001/api/predict', {
-              method: 'POST',
-              body: formData
-            });
-            if (response.ok) {
-              await refreshDashboard(); // Re-fetch the data to update the UI
-            } else {
-              const errData = await response.json();
-              alert('Analysis failed: ' + (errData.error || 'Unknown error'));
-            }
-          } catch (err) {
-            alert('Failed to reach inference server at http://localhost:5001. Is web_inference.py running?');
-          } finally {
-            analyzeBtn.textContent = 'Analyze Plant';
-            analyzeBtn.disabled = false;
-          }
-        });
-      }
-    });
-  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Demeter — Plant Health Dashboard</title>
+  <meta name="description" content="Real-time plant health monitoring with CNN disease detection and RF growth regression." />
+  <link rel="stylesheet" href="/static/css/dashboard.css" />
 </head>
 <body>
 
-  <div id="api-status" class="api-status offline">● Checking...</div>
+<!-- ═══════════════════════════════════════════════════════════
+     HEADER
+════════════════════════════════════════════════════════════ -->
+<header id="app-header">
+  <img id="header-logo" src="/static/logo1.png" alt="Demeter Logo" onerror="this.style.display='none'" />
+  <div>
+    <div id="header-title">DEMETER</div>
+    <div id="header-subtitle">Plant Intelligence Platform</div>
+  </div>
+  <div id="header-spacer"></div>
+  <span id="model-pill">Model: Loading…</span>
+  <span id="last-updated">—</span>
+  <span id="api-pill" class="offline">● Checking…</span>
+</header>
 
-  <header>
-    <h1>Demeter — Plant Health Management</h1>
-    <p>CNN disease detection &middot; Sensor-based stress diagnosis &middot; Growth trajectory prediction &middot; Actionable cultivation recommendations</p>
-  </header>
+<!-- ═══════════════════════════════════════════════════════════
+     TAB BAR
+════════════════════════════════════════════════════════════ -->
+<nav id="tab-bar">
+  <button class="tab-btn active" data-tab="live">🌿 Live Diagnostics</button>
+  <button class="tab-btn" data-tab="performance">📊 Model Performance</button>
+</nav>
 
-  <main>
+<!-- ═══════════════════════════════════════════════════════════
+     LIVE DIAGNOSTICS TAB
+════════════════════════════════════════════════════════════ -->
+<div id="tab-live" class="tab-pane active">
+  <div id="main-content">
 
-    <!-- LEFT: Input -->
-    <div class="card">
-      <h2>Image Input</h2>
-      <div class="image-box" id="image-box-container">
-        <span id="preview-text">[ Plant image preview ]</span>
-        <img id="image-preview" style="display:none; max-width:100%; max-height:100%; border-radius: 4px; object-fit: cover;" />
-        <input type="file" id="image-upload-input" accept="image/*" style="display:none;" />
+    <!-- Empty state overlay removed per user request -->
+
+    <div id="live-grid" style="transition: opacity 0.3s;">
+
+      <!-- ── ROW 1 ──────────────────────────────────────────── -->
+      <div class="grid-3">
+
+        <!-- Card A: Upload + Sliders -->
+        <div class="card">
+          <div class="card-title"><span class="card-title-icon">📷</span>Image Input &amp; Sensors</div>
+
+          <div id="drop-zone">
+            <div id="drop-zone-text">
+              <span id="drop-icon">⬆️</span>
+              <span>Drop image here or click to select</span>
+            </div>
+          </div>
+          <input type="file" id="file-input" accept="image/*" style="display:none" />
+
+          <div class="btn-row">
+            <button class="btn btn-secondary" onclick="document.getElementById('file-input').click()">Select Image</button>
+            <button class="btn btn-primary" id="analyze-btn" style="display:none">Analyze Plant</button>
+          </div>
+
+          <!-- Sliders -->
+          <div style="margin-top:18px;">
+            <div class="card-title" style="margin-bottom:10px;"><span class="card-title-icon">🌡️</span>Sensor Override</div>
+
+            <div class="slider-row">
+              <input type="checkbox" id="toggle-temperature" checked title="Enable temperature override" />
+              <label class="slider-label" for="slider-temperature">Temp <span id="slider-val-temperature">25</span>°C</label>
+              <input type="range" id="slider-temperature" min="0" max="50" value="25" step="0.5" />
+            </div>
+            <div class="slider-row">
+              <input type="checkbox" id="toggle-soil_moisture" checked title="Enable moisture override" />
+              <label class="slider-label" for="slider-soil_moisture">Moisture <span id="slider-val-soil_moisture">50</span>%</label>
+              <input type="range" id="slider-soil_moisture" min="0" max="100" value="50" step="1" />
+            </div>
+            <div class="slider-row">
+              <input type="checkbox" id="toggle-sunlight_hours" checked title="Enable sunlight override" />
+              <label class="slider-label" for="slider-sunlight_hours">Sunlight <span id="slider-val-sunlight_hours">6</span>h</label>
+              <input type="range" id="slider-sunlight_hours" min="0" max="16" value="6" step="0.5" />
+            </div>
+            <div class="slider-row">
+              <input type="checkbox" id="toggle-humidity" checked title="Enable humidity override" />
+              <label class="slider-label" for="slider-humidity">Humidity <span id="slider-val-humidity">50</span>%</label>
+              <input type="range" id="slider-humidity" min="0" max="100" value="50" step="1" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Card B: CNN Disease Detection -->
+        <div class="card">
+          <div class="card-title"><span class="card-title-icon">🔬</span>CNN Disease Detection</div>
+          <div style="font-size:1.3rem; font-weight:700; color:var(--text); margin-bottom:4px;" id="disease-name">—</div>
+          <div style="font-size:0.78rem; color:var(--muted); margin-bottom:10px;" id="disease-conf">—</div>
+          <div class="conf-bar-bg"><div class="conf-bar-fill" id="disease-bar" style="width:0%"></div></div>
+
+          <div style="margin-top:20px;">
+            <div class="card-title" style="margin-bottom:10px;">Top Predictions</div>
+            <div id="top3-container">
+              <div class="pred-row" style="color:var(--muted); font-size:0.8rem">Awaiting analysis…</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card C: Health Status -->
+        <div class="card">
+          <div class="card-title"><span class="card-title-icon">💚</span>Health Status</div>
+          <div id="health-ring-wrap">
+            <svg id="health-ring-svg" width="130" height="130" viewBox="0 0 130 130">
+              <circle id="health-ring-track" cx="65" cy="65" r="54" />
+              <circle id="health-ring-fill"  cx="65" cy="65" r="54" />
+            </svg>
+            <div style="margin-top:-8px; text-align:center;">
+              <div id="health-score-num">—</div>
+              <div id="health-score-label">Health Score</div>
+            </div>
+          </div>
+          <div style="text-align:center; margin-top:10px;">
+            <span id="overall-status-badge" class="status-badge">—</span>
+          </div>
+          <div style="margin-top:12px; font-size:0.78rem; color:var(--muted); text-align:center;">
+            Growth: <span id="predicted-growth" style="color:var(--text); font-family:'JetBrains Mono',monospace;">—</span>
+          </div>
+        </div>
+      </div><!-- /grid-3 row 1 -->
+
+      <!-- ── ROW 2: Stress Cards ────────────────────────────── -->
+      <div class="grid-4 section-gap">
+        <div class="stress-card" id="stress-moisture">
+          <div class="s-label">Moisture Stress</div>
+          <div class="s-value">—</div>
+        </div>
+        <div class="stress-card" id="stress-temperature">
+          <div class="s-label">Temperature Stress</div>
+          <div class="s-value">—</div>
+        </div>
+        <div class="stress-card" id="stress-light">
+          <div class="s-label">Light Deficit</div>
+          <div class="s-value">—</div>
+        </div>
+        <div class="stress-card" id="stress-nutrient">
+          <div class="s-label">Nutrient Status</div>
+          <div class="s-value">—</div>
+        </div>
+      </div><!-- /row 2 -->
+
+      <!-- ── ROW 3 ──────────────────────────────────────────── -->
+      <div class="grid-3 section-gap">
+
+        <!-- Growth Trajectory -->
+        <div class="card">
+          <div class="card-title"><span class="card-title-icon">📈</span>Growth Trajectory</div>
+          <div class="grid-3" style="gap:10px;">
+            <div class="traj-card" id="traj-3"><div class="traj-day">Day 3</div><div class="traj-value">—</div></div>
+            <div class="traj-card" id="traj-5"><div class="traj-day">Day 5</div><div class="traj-value">—</div></div>
+            <div class="traj-card" id="traj-7"><div class="traj-day">Day 7</div><div class="traj-value">—</div></div>
+          </div>
+        </div>
+
+        <!-- System Command + Recommendations -->
+        <div class="card">
+          <div class="card-title"><span class="card-title-icon">⚙️</span>System Command</div>
+          <div id="command-box">&gt; MONITORING</div>
+          <div class="card-title" style="margin-top:14px; margin-bottom:8px;"><span class="card-title-icon">💡</span>Recommendations</div>
+          <div id="rec-container">
+            <div class="rec-chip"><span class="rec-icon">⏳</span><span class="rec-text">Awaiting diagnosis…</span></div>
+          </div>
+        </div>
+
+        <!-- Live Sensor Readouts -->
+        <div class="card">
+          <div class="card-title"><span class="card-title-icon">📡</span>Live Sensor Readouts</div>
+          <div class="grid-2" style="gap:10px;">
+            <div class="sensor-item">
+              <span class="sensor-name">Temperature</span>
+              <span class="sensor-value" id="sensor-temp">—</span>
+            </div>
+            <div class="sensor-item">
+              <span class="sensor-name">Soil Moisture</span>
+              <span class="sensor-value" id="sensor-moisture">—</span>
+            </div>
+            <div class="sensor-item">
+              <span class="sensor-name">Sunlight Hours</span>
+              <span class="sensor-value" id="sensor-sunlight">—</span>
+            </div>
+            <div class="sensor-item">
+              <span class="sensor-name">Humidity</span>
+              <span class="sensor-value" id="sensor-humidity">—</span>
+            </div>
+          </div>
+        </div>
+      </div><!-- /row 3 -->
+
+      <!-- ── ROW 4: History Table ───────────────────────────── -->
+      <div class="card section-gap col-span-full">
+        <div class="card-title"><span class="card-title-icon">🗂️</span>Diagnostic History</div>
+        <div id="history-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Disease Detected</th>
+                <th>Status</th>
+                <th>Moisture</th>
+                <th>Temp</th>
+                <th>Score</th>
+              </tr>
+            </thead>
+            <tbody id="history-tbody">
+              <tr><td colspan="6" class="empty-state">Loading history…</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-      <div style="display: flex; gap: 10px;">
-        <button class="upload-btn" onclick="document.getElementById('image-upload-input').click()">Select Image</button>
-        <button class="upload-btn" id="analyze-btn" style="background:#f97316; display:none;">Analyze Plant</button>
+
+    </div><!-- /live-grid -->
+  </div><!-- /main-content -->
+</div><!-- /tab-live -->
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODEL PERFORMANCE TAB
+════════════════════════════════════════════════════════════ -->
+<div id="tab-performance" class="tab-pane">
+  <div id="main-content" style="max-width:1400px; margin:0 auto; padding:24px 28px;">
+
+    <div id="perf-empty" style="display:none; justify-content:center; padding:60px; text-align:center;">
+      <p style="color:var(--muted)">No evaluation data found. Run evaluation scripts first.</p>
+    </div>
+
+    <!-- Metric summary cards -->
+    <div class="grid-3">
+
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">🧠</span>PlantVillage CNN</div>
+        <div style="font-size:0.72rem; color:var(--blue); margin-bottom:12px; font-family:'JetBrains Mono',monospace;">Image Classification</div>
+        <div id="pv-metrics">
+          <div class="metric-kv">
+            <div class="kv-item"><div class="kv-key">Accuracy</div><div class="kv-val">86.0%</div></div>
+            <div class="kv-item"><div class="kv-key">Macro F1</div><div class="kv-val">0.850</div></div>
+          </div>
+        </div>
       </div>
 
-      <h2 style="margin-top:18px;">Environmental Sensors</h2>
-      <div class="sensors">
-        <div class="metric" data-metric="temperature">
-          <div class="label">Temperature</div>
-          <div class="value">-- °C</div>
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">🌿</span>Danforth Random Forest</div>
+        <div style="font-size:0.72rem; color:var(--blue); margin-bottom:12px; font-family:'JetBrains Mono',monospace;">Growth Regression</div>
+        <div id="df-metrics">
+          <div class="metric-kv">
+            <div class="kv-item"><div class="kv-key">RMSE</div><div class="kv-val">0.291</div></div>
+            <div class="kv-item"><div class="kv-key">R²</div><div class="kv-val">0.662</div></div>
+          </div>
         </div>
-        <div class="metric" data-metric="moisture">
-          <div class="label">Soil Moisture</div>
-          <div class="value">-- %</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">🔎</span>Eval Run 1</div>
+        <div style="font-size:0.72rem; color:var(--blue); margin-bottom:12px; font-family:'JetBrains Mono',monospace;">Summary</div>
+        <div id="eval1-metrics">
+          <div class="metric-kv">
+            <div class="kv-item"><div class="kv-key">RF RMSE</div><div class="kv-val">0.047</div></div>
+            <div class="kv-item"><div class="kv-key">R²</div><div class="kv-val">0.998</div></div>
+          </div>
         </div>
-        <div class="metric" data-metric="sunlight">
-          <div class="label">Sunlight Hours</div>
-          <div class="value">-- hrs</div>
-        </div>
+      </div>
+    </div><!-- /perf grid-3 -->
+
+    <!-- Per-class accuracy -->
+    <div class="card section-gap">
+      <div class="card-title"><span class="card-title-icon">📋</span>PlantVillage CNN — Per-Class Accuracy</div>
+      <div id="per-class-container">
+        <p style="color:var(--muted); font-size:0.82rem;">Loading per-class metrics from /api/metrics…</p>
       </div>
     </div>
 
-    <!-- RIGHT: CNN Results -->
-    <div class="card">
-      <h2>CNN — Disease Detection</h2>
-      <div style="margin-top:4px;">
-        <div class="species-row">
-          <span style="font-weight:bold;" data-section="disease-name">Loading...</span>
-          <span class="confidence" data-section="disease-confidence">Disease confidence: --</span>
-        </div>
-        <div class="progress-bar-bg"><div class="progress-bar-fill" data-section="disease-bar" style="width:0%; background:#ccc;"></div></div>
-      </div>
+  </div>
+</div><!-- /tab-performance -->
 
-      <div class="status" style="margin-top:14px;" data-section="overall-status">Overall Status: --</div>
-      <div style="font-size: 0.85rem; color: #555; margin-top: 4px;" data-section="health-score">Health Score: --</div>
-
-      <h2 style="margin-top:16px;">Actionable Recommendations</h2>
-      <div class="actions" data-section="recommendations">
-        <div class="action-item"><span class="icon">⏳</span>Loading...</div>
-      </div>
-
-      <div class="command-box" data-section="system-command">System Command: MONITORING</div>
-    </div>
-
-    <!-- MIDDLE: Stress Diagnosis + Growth Trajectory -->
-    <div class="card">
-      <h2>Stress Diagnosis</h2>
-      <div class="sensors" style="grid-template-columns: 1fr 1fr; gap:10px;">
-        <div class="metric" data-stress="moisture">
-          <div class="label">Moisture Stress</div>
-          <div class="value">--</div>
-        </div>
-        <div class="metric" data-stress="temperature">
-          <div class="label">Temperature Stress</div>
-          <div class="value">--</div>
-        </div>
-        <div class="metric" data-stress="light">
-          <div class="label">Light Deficit</div>
-          <div class="value">--</div>
-        </div>
-        <div class="metric" data-stress="nutrient">
-          <div class="label">Nutrient Status</div>
-          <div class="value">--</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Growth Trajectory Prediction</h2>
-      <div style="margin-bottom:10px; font-size:0.85rem; color:#555;">Projected next 7 days based on current sensor readings</div>
-      <div class="sensors" style="grid-template-columns: 1fr 1fr 1fr; gap:10px;">
-        <div class="metric" data-trajectory-day="3">
-          <div class="label">Day 3</div>
-          <div class="value">--</div>
-        </div>
-        <div class="metric" data-trajectory-day="5">
-          <div class="label">Day 5</div>
-          <div class="value">--</div>
-        </div>
-        <div class="metric" data-trajectory-day="7">
-          <div class="label">Day 7</div>
-          <div class="value">--</div>
-        </div>
-      </div>
-      <div style="margin-top:14px; font-size:0.82rem; background:#fff7ed; border-left:3px solid #f97316; padding:8px 12px; border-radius:0 4px 4px 0; color:#92400e;">
-        💡 Diagnosis updates every 5 seconds. Run <code>main.py</code> to generate new predictions.
-      </div>
-    </div>
-
-    <!-- BOTTOM: Log -->
-    <div class="card full-width" data-section="log-table">
-      <h2>Diagnostic Log</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Timestamp</th>
-            <th>Species</th>
-            <th>Disease Detected</th>
-            <th>Status</th>
-            <th>Moisture (%)</th>
-            <th>Temp (°C)</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td colspan="6" style="text-align:center; color:#999;">Loading diagnostic history...</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-  </main>
-
+<script type="module" src="/static/js/app.js"></script>
 </body>
 </html>
