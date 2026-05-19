@@ -50,22 +50,19 @@ def load_models(cnn_path, rf_path):
 # ==========================================
 # PLANTVILLAGE DISEASE CLASSIFICATION
 # ==========================================
-def diagnose_plant_disease(image_path, cnn_model, class_names):
+def diagnose_plant_disease(img_array, image_path, cnn_model, class_names):
     """
-    Classifies plant disease from image using PlantVillage CNN.
+    Classifies plant disease from image array using PlantVillage CNN.
     
     Args:
-        image_path: Path to plant image
+        img_array: Pre-processed image tensor
+        image_path: Original image path for logging
         cnn_model: Trained CNN model
         class_names: List of disease class names
         
     Returns:
         Dictionary with disease prediction and confidence
     """
-    img = tf.keras.utils.load_img(image_path, target_size=(150, 150))
-    img_array = tf.keras.utils.img_to_array(img)
-    img_array = tf.expand_dims(img_array, 0)
-    
     predictions = cnn_model.predict(img_array, verbose=0)
     disease_idx = np.argmax(predictions[0])
     detected_disease = class_names[disease_idx]
@@ -121,19 +118,13 @@ def predict_growth_milestone(environmental_data, rf_model):
 # ==========================================
 # ADDITIONAL PREDICTIONS: BIOMASS, TILLER, BELLWETHER
 # ==========================================
-def predict_biomass(image_path, cnn_model):
-    """Predict continuous biomass weight from an image."""
-    img = tf.keras.utils.load_img(image_path, target_size=(150, 150))
-    img_array = tf.keras.utils.img_to_array(img)
-    img_array = tf.expand_dims(img_array, 0)
+def predict_biomass(img_array, cnn_model):
+    """Predict continuous biomass weight from an image array."""
     prediction = float(cnn_model.predict(img_array, verbose=0)[0][0])
     return round(prediction, 2)
 
-def predict_tiller_count(image_path, cnn_model):
-    """Predict continuous tiller count from an image."""
-    img = tf.keras.utils.load_img(image_path, target_size=(150, 150))
-    img_array = tf.keras.utils.img_to_array(img)
-    img_array = tf.expand_dims(img_array, 0)
+def predict_tiller_count(img_array, cnn_model):
+    """Predict continuous tiller count from an image array."""
     prediction = float(cnn_model.predict(img_array, verbose=0)[0][0])
     # Tiller counts are usually integers, but we return a float for precision
     return round(prediction, 2)
@@ -223,16 +214,12 @@ def generate_complete_diagnosis(
 # ==========================================
 # LEGACY: BELLWETHER WATER STRESS ANALYSIS
 # ==========================================
-def analyze_plant_status(image_path, water_amount, weight, cnn_model, rf_model, class_names):
+def analyze_plant_status(img_array, water_amount, weight, cnn_model, rf_model, class_names):
     """Runs the full pipeline: Image classification + Random Forest logic."""
     
     # ==========================================
     # 1. Vision Classification (CNN)
     # ==========================================
-    img = tf.keras.utils.load_img(image_path, target_size=(150, 150))
-    img_array = tf.keras.utils.img_to_array(img)
-    img_array = tf.expand_dims(img_array, 0)
-    
     predictions = cnn_model.predict(img_array, verbose=0)
     species_idx = np.argmax(predictions[0])
     detected_status_vision = class_names[species_idx] # e.g., 'Water_Stressed'

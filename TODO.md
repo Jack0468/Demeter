@@ -35,32 +35,28 @@
 - [ ] **Standardize Test Set Evaluation:** Update evaluation scripts to pull strictly from the `data/processed/test_sets/` partitions to prevent data leakage.
 
 
-## FROM JACK on 15/05/2026
+## FROM JACK on 20/05/2026
 ## DO NOT TOUCH from here down
 
-verify correctness / accruacy.
-
 check baseline model versions so we can compare outputs based on different input techniques.
+
+Preprossessing techniques:
+perform dtft on on images to determine if the colour content of an image is a useful element in classification rather than just spatial features
 e.g. no augmenter, different activation functions on CNN
+
+model changes:
+compare different activation functions
+compare different optimizers
+compare different loss functions
 
 CNN SPECIFIC FEATURES
 padding of image pixels to perform convolutions.
 
-evaluation. 
 
-[x] fix connection to dashboard.html
-
-[x] check if we should use a SVM. -> defo yes for classification of health status
-*(Update: The SVM concept has been abandoned as it arbitrarily trained a model on output noise without true biological ground truth labels connecting environmental and visual streams).*
-
-SVM:
-Must re interpret data availible and its useage.
-GOAL: use data / regressor model / CNN health to train SVM
-
-or if the outputs of the various models can be fed into a NN
 
 PROMPTS TODO:
 
+Please consider the state of the comments below here.
 CRITICAL INFO TO CONSIDER:
 1. The "Frankenstein" Dataset Problem (Domain Mismatch)
 The most glaring critical flaw in your data strategy is that you are attempting to build a unified inference pipeline (inference_engine.py) using datasets that are entirely detached from one another in the real world:
