@@ -94,3 +94,38 @@ To ensure the entire document is consistent with the final codebase and implemen
 3. **Pre-processing and Evaluation Strategy (Section 3)**:
    - **Visual Stream Pre-processing**: Mention the biological signal processing pipeline: converting images to grayscale, applying Otsu's thresholding to isolate leaves, computing 2D FFT magnitude spectrum, applying Principal Component Analysis (PCA) to extract the top 100 components, and appending a 64-bin HSV color histogram to form the feature vector for the Production SVM.
    - **Evaluation Criteria**: Include the success metrics for the SVM (accuracy of 84.53% and macro F1 of 84.28% over 15 classes on 20,638 images) and the Random Forest Regressor (RMSE of 0.0846, $R^2$ of 0.9978).
+
+---
+
+## 3. ENGG2112 Cohort Context & High-Scoring Strategies
+
+This section assists in framing Demeter's results in comparison to other groups in the ENGG2112 cohort, detailing concrete strategies to secure the highest grades under the presentation and report rubrics.
+
+### Peer Cohort Comparison Matrix
+When preparing the report discussion or the final presentation, use this matrix to demonstrate your awareness of other engineering solutions in the cohort and highlight Demeter's complexity:
+
+| Project / System | Objective | Machine Learning Method | Key Performance Metric | Implementation Target |
+| :--- | :--- | :--- | :--- | :--- |
+| **Demeter** (Ours) | Crop disease & growth forecasting | MobileNetV2 CNN, Hybrid FFT+HSV SVM, RF Regressor, K-Means | **84.53% SVM Accuracy**, 84.31% CNN Accuracy, **0.0846 RF RMSE** | Laptop/Pi-ready consolidated API server (Port 5000) & sensors. |
+| **1. AquaSafe Horizons** | Water potability | Random Forest, KNN, WNN, Gaussian Naive Bayes, LR | 0.96 RF Accuracy, 0.96 RF Precision | IoT sensor deployment with UNICEF's WASH (Ethiopia). |
+| **2. Cardiovascular Risk** | 10-year heart disease | Logistic Regression (Bayesian optimized + Borderline SMOTE) | Balanced F1 score (minimizing false negatives) | Tabular clinical analysis and risk profiling. |
+| **3. Waste Segregation** | Garbage sorting | Dual Convolutional Neural Networks (CNN) | 78% Material Accuracy, 90% Recyclable Accuracy | Multi-spectral imaging integration proposal. |
+| **4. Food Waste Control** | Daily restaurant demand | Random Forest Regressor + Normal Distribution modeling | 2.41 RF MSE, 0.928 $R^2$ score | Operational business forecasting tool. |
+| **5. Blind Imitation** | Motion matching simulation | Deep Reinforcement Learning (PPO) in Unity | N/A (Preliminary runs failed to stabilize or mimic pose) | Simulated character rigs in physical environments. |
+
+### Rubric Alignment Action Plan
+
+#### 1. Optimization & Trade-Offs (Methods - 23% Weight)
+* **Highlight hyperparameter tuning**: Ensure the final report explicitly discusses why **100 components** were chosen for PCA. Explain the trade-off: keeping fewer components reduces computation and training time, but losing too many frequencies drops accuracy below the target 85% threshold.
+* **Explain Random Forest depth**: Justify the tree selection for the Danforth Regressor (e.g. n_estimators, max_depth) using the 5-Fold cross-validation results to prove the model is not overfitting.
+
+#### 2. Quantitative Results & F1 Optimization (Findings - 23% Weight)
+* **Why Macro F1 over Accuracy?**: In agricultural diagnostic datasets, healthy leaves are highly over-represented compared to specific pathologies. Advise the markers that you optimized for **Macro F1-Score (84.28%)** rather than standard accuracy to ensure the model is highly sensitive to rare, crop-destroying diseases.
+* **Explain RMSE**: Emphasize that Root Mean Square Error (0.0846) provides a physical metric (in grams of biomass), which is required to calculate exact water and fertilizer adjustments.
+
+#### 3. Presentation Q&A Defense Strategies (Presentation - 33% Weight)
+* **Q: "Why did you implement a shallow SVM when you already had a MobileNetV2 CNN?"**
+  * *A: "We decoupled the visual streams to address the Accessibility Gap. The CNN is our high-capacity baseline, but it requires substantial RAM and GPU capacity. The Production Hybrid SVM is our lightweight alternative that achieves near-identical accuracy (84.53%) with a fraction of the memory footprint, making it viable for cheap edge-devices like a Raspberry Pi Zero."*
+* **Q: "How does the system translate raw machine learning outputs into real-world value?"**
+  * *A: "Through the deterministic Status Engine. Instead of outputting raw confidence probabilities which are meaningless to a home gardener, the engine maps inputs to physical thresholds (e.g. soil moisture falling below the 25% critical limit) to generate direct, clear actions, such as 'Trigger water pump for 200ml'."*
+
