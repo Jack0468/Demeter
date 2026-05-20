@@ -69,16 +69,17 @@ class StatusEngine:
 
         return {
             "stress_diagnosis": {
-                "moisture_stress": moisture_stress,
-                "temperature_stress": temp_stress,
-                "light_deficit": light_deficit,
-                "nutrient_status": "Adequate"
+                "moisture_stress": moisture_stress + " [HEURISTIC]",
+                "temperature_stress": temp_stress + " [HEURISTIC]",
+                "light_deficit": light_deficit + " [HEURISTIC]",
+                "nutrient_status": "Adequate [HEURISTIC]"
             },
-            "overall_status": overall_status,
-            "health_score": health_score,
+            "overall_status": overall_status + " [HEURISTIC]",
+            "health_score": f"{health_score} [HEURISTIC]",
             "trajectory_7day": {"3": overall_status, "5": overall_status, "7": overall_status},
-            "system_command": system_command,
+            "system_command": system_command + " [HEURISTIC]",
+            "is_heuristic": True,
             "recommendations": [
-                {"action": "Monitor closely", "urgency": "info", "icon": "ℹ️"}
+                {"action": "Monitor closely [HEURISTIC]", "urgency": "info", "icon": "ℹ️"}
             ]
         }

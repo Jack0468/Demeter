@@ -94,7 +94,7 @@ Each diagnosis is stored as:
 ```json
 {
   "timestamp": "2026-05-01T14:30:22.123456",
-  "image_path": "data/layer2_health_rgb/PlantVillage/Tomato__Early_blight/image.jpg",
+  "image_path": "data/raw/vision/PlantVillage/Tomato__Early_blight/image.jpg",
   "cnn_result": {
     "primary_disease": "Early Blight",
     "confidence": 0.842,

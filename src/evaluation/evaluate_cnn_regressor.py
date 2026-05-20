@@ -23,7 +23,7 @@ PROJECT_ROOT = _current_dir.parent.parent if _current_dir.parent.name == "src" e
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts.setup_tiller_data import load_manual_tiller_data
+from scripts.data_prep.setup_tiller_data import load_manual_tiller_data
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Evaluate a CNN Regressor (e.g., Tiller Count model).")

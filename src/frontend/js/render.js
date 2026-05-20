@@ -62,6 +62,32 @@ export function renderDiseaseCard(cnn) {
   }
 }
 
+export function renderHybridDiseaseCard(hybrid) {
+  const nameEl = document.getElementById('hybrid-disease-name');
+  const confEl = document.getElementById('hybrid-disease-conf');
+  const barEl  = document.getElementById('hybrid-disease-bar');
+
+  if (!hybrid) {
+    if (nameEl) nameEl.textContent = '—';
+    if (confEl) confEl.textContent = '—';
+    if (barEl) {
+      barEl.style.width = '0%';
+      barEl.style.background = 'var(--muted)';
+    }
+    return;
+  }
+
+  const disease = hybrid.primary_disease || 'Unknown';
+  const conf    = parseFloat(hybrid.confidence) || 0;
+
+  if (nameEl) nameEl.textContent = disease.replace(/_/g, ' ');
+  if (confEl) confEl.textContent = `${(conf * 100).toFixed(0)}% confidence`;
+  if (barEl) {
+    barEl.style.width = `${(conf * 100).toFixed(0)}%`;
+    barEl.style.background = conf > 0.8 ? 'var(--green)' : conf > 0.5 ? 'var(--amber)' : 'var(--red)';
+  }
+}
+
 // ── Health Status (Card C) ───────────────────────────────────────
 export function renderHealthCard(diagnosis) {
   const score  = diagnosis?.health_score ?? null;

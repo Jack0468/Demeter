@@ -1,18 +1,18 @@
 # Fallback list of 15 PlantVillage classes when data directory is missing
 PLANTVILLAGE_CLASSES = [
-    "Apple___Apple_scab",
-    "Apple___Black_rot",
-    "Apple___Cedar_apple_rust",
-    "Apple___healthy",
-    "Blueberry___healthy",
-    "Cherry___Powdery_mildew",
-    "Cherry___healthy",
-    "Corn___Cercospora_leaf_spot",
-    "Corn___Common_rust",
-    "Corn___Northern_Leaf_Blight",
-    "Corn___healthy",
-    "Grape___Black_rot",
-    "Grape___Esca",
-    "Grape___Leaf_blight",
-    "Grape___healthy"
+    "Pepper__bell___Bacterial_spot",
+    "Pepper__bell___healthy",
+    "Potato___Early_blight",
+    "Potato___Late_blight",
+    "Potato___healthy",
+    "Tomato_Bacterial_spot",
+    "Tomato_Early_blight",
+    "Tomato_Late_blight",
+    "Tomato_Leaf_Mold",
+    "Tomato_Septoria_leaf_spot",
+    "Tomato_Spider_mites_Two_spotted_spider_mite",
+    "Tomato__Target_Spot",
+    "Tomato__Tomato_YellowLeaf__Curl_Virus",
+    "Tomato__Tomato_mosaic_virus",
+    "Tomato_healthy"
 ]

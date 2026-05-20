@@ -107,6 +107,6 @@ http://localhost:5000/dashboard
 To generate deep analytical metrics, confusion matrices, and formal classification reports on unseen test data:
 ```bash
 python src/evaluation/run_evaluation_suite.py \
-  --cnn_test_dir data/layer2_health_rgb/PlantVillage \
+  --cnn_test_dir data/raw/vision/PlantVillage \
   --rf_csv data/layer3_environment/plant_growth_data.csv \
   --run_name my_eval_run

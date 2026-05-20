@@ -4,6 +4,7 @@
  */
 import {
   renderDiseaseCard,
+  renderHybridDiseaseCard,
   renderHealthCard,
   renderStressCards,
   renderTrajectory,
@@ -38,6 +39,7 @@ export function refreshLiveTab(diagnosis, history) {
   hideEmptyState();
 
   renderDiseaseCard(diagnosis.cnn_result);
+  renderHybridDiseaseCard(diagnosis.hybrid_prediction);
   renderHealthCard(diagnosis);
   renderStressCards(diagnosis.stress_diagnosis);
   renderTrajectory(diagnosis.trajectory_7day);

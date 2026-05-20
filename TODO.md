@@ -35,32 +35,35 @@
 - [ ] **Standardize Test Set Evaluation:** Update evaluation scripts to pull strictly from the `data/processed/test_sets/` partitions to prevent data leakage.
 
 
-## FROM JACK on 15/05/2026
+## FROM JACK on 20/05/2026
 ## DO NOT TOUCH from here down
 
-verify correctness / accruacy.
-
 check baseline model versions so we can compare outputs based on different input techniques.
+
+Preprossessing techniques:
+perform dtft on on images to determine if the colour content of an image is a useful element in classification rather than just spatial features
+
+NEW IDEA FOR FILTERS AND DTFT:
+1 . perform filters on the images to try and enhance features relevant to the condition of the plant. there are certain filters that can be used to enhance certain colours, shapes, textures etc. 
+2. use regular openCV classifaction to determine if image is a plant or not, then extract the plant from the image using this method. THEN perform dtft on the plant image to determine if the colour content of an image is a useful element in classification rather than just spatial features.
+
+
 e.g. no augmenter, different activation functions on CNN
+Perform the same kind of experimentation with the other baseline model ideas. 
+ 
+model changes:
+compare different activation functions
+compare different optimizers
+compare different loss functions
 
 CNN SPECIFIC FEATURES
 padding of image pixels to perform convolutions.
 
-evaluation. 
 
-[x] fix connection to dashboard.html
-
-[x] check if we should use a SVM. -> defo yes for classification of health status
-*(Update: The SVM concept has been abandoned as it arbitrarily trained a model on output noise without true biological ground truth labels connecting environmental and visual streams).*
-
-SVM:
-Must re interpret data availible and its useage.
-GOAL: use data / regressor model / CNN health to train SVM
-
-or if the outputs of the various models can be fed into a NN
 
 PROMPTS TODO:
 
+Please consider the state of the comments below here.
 CRITICAL INFO TO CONSIDER:
 1. The "Frankenstein" Dataset Problem (Domain Mismatch)
 The most glaring critical flaw in your data strategy is that you are attempting to build a unified inference pipeline (inference_engine.py) using datasets that are entirely detached from one another in the real world:
@@ -79,7 +82,7 @@ https://github.com/awesomedata/awesome-public-datasets#agriculture
 3. Structural Fragmentation and Clutter
 The data/ directory lacks a cohesive structure and is suffering from "dumping ground" syndrome. Based on the file paths hardcoded across your scripts:
 
-Raw vs. Processed Data: You have layer2_health_rgb/PlantVillage and layer3_environment/plant_growth_data.csv acting as raw sources, but then prepare_bellwether_test_set.py dumps bellwether_rf_test.csv and bellwether_test_images/ straight into the root data/ folder.
+Raw vs. Processed Data: You have raw/vision/PlantVillage and layer3_environment/plant_growth_data.csv acting as raw sources, but then prepare_bellwether_test_set.py dumps bellwether_rf_test.csv and bellwether_test_images/ straight into the root data/ folder.
 Artifact Clutter: metadata_cache.pkl is sitting at the root of data/.
 Conflicting Log Files: inference_engine.py defines a fallback log path of data/demeter_logs.csv, while SETUP_DASHBOARD.md and the SVM script refer to data/plant_diagnostics.csv. Having multiple overlapping CSV files for logging predictions will lead to missing historical data when evaluating the system's actual performance.
 

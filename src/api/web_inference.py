@@ -33,7 +33,7 @@ CORS(app)
 # Configuration for models and data
 plantvillage_cnn_model_path = str(PROJECT_ROOT / "models/demeter_cnn_plantvillage.keras")
 danforth_rf_model_path = str(PROJECT_ROOT / "models/demeter_rf_danforth.joblib")
-plantvillage_dir = str(PROJECT_ROOT / "data/layer2_health_rgb/PlantVillage")
+plantvillage_dir = str(PROJECT_ROOT / "data/raw/vision/PlantVillage")
 
 print("Loading AI Models for Web Inference...")
 try:
