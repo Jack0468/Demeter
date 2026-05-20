@@ -44,6 +44,10 @@ _model_state = {
     "cnn_tiller": None,
     "cnn_water": None,
     "rf_water": None,
+    "hybrid_svm": None,
+    "hybrid_fft_pca": None,
+    "hybrid_fft_scaler": None,
+    "hybrid_hist_scaler": None,
     "class_dirs": [],
     "error": None
 }
@@ -64,6 +68,12 @@ def _ensure_models_loaded():
         cnn_water_path = str(PROJECT_ROOT / "models/demeter_cnn.keras")
         rf_water_path = str(PROJECT_ROOT / "models/demeter_rf.joblib")
         
+        # Hybrid full SVM paths
+        hybrid_svm_path = str(PROJECT_ROOT / "models/experimentation/hybrid_full_svm.joblib")
+        hybrid_fft_pca_path = str(PROJECT_ROOT / "models/experimentation/hybrid_full_fft_pca.joblib")
+        hybrid_fft_scaler_path = str(PROJECT_ROOT / "models/experimentation/hybrid_full_fft_scaler.joblib")
+        hybrid_hist_scaler_path = str(PROJECT_ROOT / "models/experimentation/hybrid_full_hist_scaler.joblib")
+        
         if os.path.exists(cnn_path):
             _model_state["cnn"] = tf.keras.models.load_model(cnn_path)
         if os.path.exists(rf_path):
@@ -77,7 +87,17 @@ def _ensure_models_loaded():
             _model_state["cnn_water"] = tf.keras.models.load_model(cnn_water_path)
         if os.path.exists(rf_water_path):
             _model_state["rf_water"] = joblib.load(rf_water_path)
-
+            
+        # Lazy-load Hybrid SVM components
+        if os.path.exists(hybrid_svm_path):
+            _model_state["hybrid_svm"] = joblib.load(hybrid_svm_path)
+        if os.path.exists(hybrid_fft_pca_path):
+            _model_state["hybrid_fft_pca"] = joblib.load(hybrid_fft_pca_path)
+        if os.path.exists(hybrid_fft_scaler_path):
+            _model_state["hybrid_fft_scaler"] = joblib.load(hybrid_fft_scaler_path)
+        if os.path.exists(hybrid_hist_scaler_path):
+            _model_state["hybrid_hist_scaler"] = joblib.load(hybrid_hist_scaler_path)
+ 
         plantvillage_dir = str(PROJECT_ROOT / "data/raw/vision/PlantVillage")
         if os.path.exists(plantvillage_dir):
             _model_state["class_dirs"] = sorted([
@@ -459,7 +479,6 @@ def predict():
             "Temperature": temperature,
             "Humidity": humidity
         }
-
         # Setup parallel inference tasks
         with ThreadPoolExecutor() as executor:
             future_disease = executor.submit(diagnose_plant_disease, img_array, image_path, _model_state["cnn"], _model_state["class_dirs"])
@@ -472,6 +491,19 @@ def predict():
             future_tiller = None
             if _model_state["cnn_tiller"]:
                 future_tiller = executor.submit(predict_tiller_count, img_array, _model_state["cnn_tiller"])
+                
+            future_hybrid = None
+            if _model_state["hybrid_svm"]:
+                from src.core.inference_engine import predict_hybrid_disease
+                future_hybrid = executor.submit(
+                    predict_hybrid_disease,
+                    image_path,
+                    _model_state["hybrid_fft_scaler"],
+                    _model_state["hybrid_hist_scaler"],
+                    _model_state["hybrid_fft_pca"],
+                    _model_state["hybrid_svm"],
+                    _model_state["class_dirs"]
+                )
             
             # Retrieve basic results first
             disease = future_disease.result()
@@ -488,6 +520,10 @@ def predict():
             # Tiller
             if future_tiller:
                 all_preds["tiller_result"] = future_tiller.result()
+                
+            # Hybrid SVM
+            if future_hybrid:
+                all_preds["hybrid_result"] = future_hybrid.result()
 
             # Water Stress (needs biomass_val, so we run it after biomass completes, or wait for biomass)
             # Alternatively, we could have run it concurrently if we estimated biomass_val, but waiting is safer.
@@ -625,19 +661,19 @@ def internal_error(error):
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("Demeter — Unified API Server")
+    print("Demeter - Unified API Server")
     print("=" * 60)
     print(f"Output directory : {OUTPUT_DIR}")
     print(f"Latest diagnosis : {LATEST_DIAGNOSIS_FILE}")
     print(f"History file     : {HISTORY_FILE}")
     print("\nEndpoints:")
-    print("  GET  /dashboard        → Dashboard UI")
-    print("  POST /api/predict      → Inference (merged from port 5001)")
-    print("  GET  /api/latest       → Latest diagnosis")
-    print("  GET  /api/history      → Diagnosis history")
-    print("  GET  /api/metrics      → Evaluation metrics")
-    print("  GET  /api/status       → System status")
-    print("  GET  /api/health       → Health check")
+    print("  GET  /dashboard        -> Dashboard UI")
+    print("  POST /api/predict      -> Inference (merged from port 5001)")
+    print("  GET  /api/latest       -> Latest diagnosis")
+    print("  GET  /api/history      -> Diagnosis history")
+    print("  GET  /api/metrics      -> Evaluation metrics")
+    print("  GET  /api/status       -> System status")
+    print("  GET  /api/health       -> Health check")
     print("\nStarting on http://localhost:5000")
     print("=" * 60)
     os.makedirs(OUTPUT_DIR, exist_ok=True)

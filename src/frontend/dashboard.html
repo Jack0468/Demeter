@@ -89,16 +89,28 @@
           </div>
         </div>
 
-        <!-- Card B: CNN Disease Detection -->
+        <!-- Card B: CNN & Hybrid SVM Disease Detection -->
         <div class="card">
-          <div class="card-title"><span class="card-title-icon">🔬</span>CNN Disease Detection</div>
-          <div style="font-size:0.75rem; color:var(--muted); margin-bottom:8px;">Model: PlantVillage CNN</div>
-          <div style="font-size:1.3rem; font-weight:700; color:var(--text); margin-bottom:4px;" id="disease-name">—</div>
-          <div style="font-size:0.78rem; color:var(--muted); margin-bottom:10px;" id="disease-conf">—</div>
-          <div class="conf-bar-bg"><div class="conf-bar-fill" id="disease-bar" style="width:0%"></div></div>
+          <div class="card-title"><span class="card-title-icon">🔬</span>Dual-Stream Vision Diagnostics</div>
+          
+          <!-- Stream 1: CNN -->
+          <div style="margin-bottom: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 14px;">
+            <div style="font-size:0.72rem; color:var(--blue); font-weight:600; letter-spacing:0.05em; margin-bottom:4px; font-family:'JetBrains Mono',monospace;">DEEP LEARNING STREAM (CNN)</div>
+            <div style="font-size:1.2rem; font-weight:700; color:var(--text); margin-bottom:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" id="disease-name">—</div>
+            <div style="font-size:0.75rem; color:var(--muted); margin-bottom:8px;" id="disease-conf">—</div>
+            <div class="conf-bar-bg"><div class="conf-bar-fill" id="disease-bar" style="width:0%"></div></div>
+          </div>
+          
+          <!-- Stream 2: Hybrid FFT + HSV SVM -->
+          <div style="margin-bottom: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 14px;">
+            <div style="font-size:0.72rem; color:var(--green); font-weight:600; letter-spacing:0.05em; margin-bottom:4px; font-family:'JetBrains Mono',monospace;">SIGNAL SPECTRA STREAM (HYBRID SVM)</div>
+            <div style="font-size:1.2rem; font-weight:700; color:var(--text); margin-bottom:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" id="hybrid-disease-name">—</div>
+            <div style="font-size:0.75rem; color:var(--muted); margin-bottom:8px;" id="hybrid-disease-conf">—</div>
+            <div class="conf-bar-bg"><div class="conf-bar-fill" id="hybrid-disease-bar" style="width:0%"></div></div>
+          </div>
 
-          <div style="margin-top:20px;">
-            <div class="card-title" style="margin-bottom:10px;">Top Predictions</div>
+          <div style="margin-top:10px;">
+            <div class="card-title" style="margin-bottom:10px; font-size:0.8rem;">CNN Top Predictions</div>
             <div id="top3-container">
               <div class="pred-row" style="color:var(--muted); font-size:0.8rem">Awaiting analysis…</div>
             </div>

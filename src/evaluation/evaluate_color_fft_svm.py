@@ -20,7 +20,7 @@ MODELS_DIR = PROJECT_ROOT / "models/experimentation"
 OUT_DIR = PROJECT_ROOT / "evaluation_outputs/fft_svm_experiment"
 os.makedirs(OUT_DIR, exist_ok=True)
 
-SAMPLES_PER_CLASS = 20  # Fast test evaluation set size per class
+SAMPLES_PER_CLASS = 50  # Larger test evaluation set size per class
 IMG_SIZE = 64
 
 def get_otsu_mask(img_bgr):
@@ -236,6 +236,55 @@ def evaluate_hybrid_model(X_fft, X_hist, y_eval, classes):
         "f1_macro": f1
     }
 
+def evaluate_full_hybrid_model(X_fft, X_hist, y_eval, classes):
+    scaler_fft_path = MODELS_DIR / "hybrid_full_fft_scaler.joblib"
+    scaler_hist_path = MODELS_DIR / "hybrid_full_hist_scaler.joblib"
+    pca_fft_path = MODELS_DIR / "hybrid_full_fft_pca.joblib"
+    svm_path = MODELS_DIR / "hybrid_full_svm.joblib"
+    
+    if not (scaler_fft_path.exists() and scaler_hist_path.exists() and pca_fft_path.exists() and svm_path.exists()):
+        print("[Warning] Full Hybrid SVM files not found. Skipping.")
+        return None
+        
+    scaler_fft = joblib.load(scaler_fft_path)
+    scaler_hist = joblib.load(scaler_hist_path)
+    pca_fft = joblib.load(pca_fft_path)
+    svm = joblib.load(svm_path)
+    
+    # Preprocess
+    X_fft_scaled = scaler_fft.transform(X_fft)
+    X_fft_pca = pca_fft.transform(X_fft_scaled)
+    X_hist_scaled = scaler_hist.transform(X_hist)
+    X_hybrid = np.hstack([X_fft_pca, X_hist_scaled])
+    
+    # Predict
+    y_pred = svm.predict(X_hybrid)
+    
+    acc = accuracy_score(y_eval, y_pred)
+    prec, rec, f1, _ = precision_recall_fscore_support(y_eval, y_pred, average='macro', zero_division=0)
+    
+    # Save Confusion Matrix Plot
+    cm = confusion_matrix(y_eval, y_pred)
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=classes, yticklabels=classes)
+    plt.title('Confusion Matrix: Full-Dataset Hybrid FFT + HSV')
+    plt.ylabel('True Class')
+    plt.xlabel('Predicted Class')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.savefig(OUT_DIR / "hybrid_full_confusion_matrix.png")
+    plt.close()
+    
+    print(f"Evaluated Full-Dataset Hybrid SVM -> Accuracy: {acc:.2%}, F1 (macro): {f1:.4f}")
+    
+    return {
+        "pipeline": "Hybrid (Full-Dataset FFT + HSV)",
+        "accuracy": acc,
+        "precision_macro": prec,
+        "recall_macro": rec,
+        "f1_macro": f1
+    }
+
 def main():
     print("--- Demeter Signal & Preprocessing SVM Comparison Suite ---")
     
@@ -263,8 +312,12 @@ def main():
     # 5. Hybrid Raw FFT + HSV Histogram
     res = evaluate_hybrid_model(X_raw, X_hist, y_eval, classes)
     if res: results.append(res)
+    
+    # 6. Full-Dataset Hybrid Raw FFT + HSV
+    res = evaluate_full_hybrid_model(X_raw, X_hist, y_eval, classes)
+    if res: results.append(res)
         
-    # 6. Multichannel LAB FFT
+    # 7. Multichannel LAB FFT
     res = evaluate_model(X_lab, y_eval, classes, "multichannel_lab_fft", "Multichannel LAB FFT (Color Spectra)")
     if res: results.append(res)
     

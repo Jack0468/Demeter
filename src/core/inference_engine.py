@@ -195,6 +195,8 @@ def generate_complete_diagnosis(
         merged["tiller_prediction"] = all_predictions["tiller_result"]
     if "bellwether_result" in all_predictions and all_predictions["bellwether_result"]:
         merged["bellwether_water_stress"] = all_predictions["bellwether_result"]
+    if "hybrid_result" in all_predictions and all_predictions["hybrid_result"]:
+        merged["hybrid_prediction"] = all_predictions["hybrid_result"]
 
     # Generate status and recommendations
     full_diagnosis = status_engine.generate_full_diagnosis(
@@ -295,3 +297,65 @@ def log_to_csv(data_dict, filepath="data/logs/inference_logs.csv"):
         if not file_exists:
             writer.writeheader()
         writer.writerow(flat_dict)
+
+
+# ==========================================
+# HYBRID SVM DISEASE CLASSIFICATION
+# ==========================================
+def extract_hybrid_fft_features(img_path):
+    """Isolate the leaf, extract raw Grayscale FFT magnitude and HSV Color Histogram."""
+    import cv2
+    img_bgr = cv2.imread(str(img_path))
+    if img_bgr is None:
+        raise ValueError(f"Could not load {img_path}")
+    
+    IMG_SIZE = 64
+    img_bgr = cv2.resize(img_bgr, (IMG_SIZE, IMG_SIZE))
+    
+    # Otsu thresholding
+    gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (5, 5), 0)
+    _, mask = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    kernel = np.ones((3,3), np.uint8)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+    
+    # 2D FFT Magnitude Spectrum
+    fft_gray = np.fft.fft2(gray)
+    mag_gray = 20 * np.log(np.abs(np.fft.fftshift(fft_gray)) + 1).flatten()
+    
+    # HSV Histogram on isolated leaf region
+    hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
+    h_hist = cv2.calcHist([hsv], [0], mask, [32], [0, 180]).flatten()
+    s_hist = cv2.calcHist([hsv], [1], mask, [32], [0, 256]).flatten()
+    h_hist /= h_hist.sum() + 1e-6
+    s_hist /= s_hist.sum() + 1e-6
+    color_hist = np.concatenate([h_hist, s_hist])
+    
+    return mag_gray, color_hist
+
+def predict_hybrid_disease(img_path, scaler_fft, scaler_hist, pca_fft, svm, class_names):
+    """
+    Classifies plant disease using the high-performance Hybrid (Raw FFT + HSV Histogram) SVM.
+    
+    Returns:
+        Dict: predicted disease name, confidence score, and all probability scores.
+    """
+    mag_gray, color_hist = extract_hybrid_fft_features(img_path)
+    
+    X_fft_scaled = scaler_fft.transform([mag_gray])
+    X_fft_pca = pca_fft.transform(X_fft_scaled)
+    X_hist_scaled = scaler_hist.transform([color_hist])
+    X_hybrid = np.hstack([X_fft_pca, X_hist_scaled])
+    
+    # Predict probability
+    probs = svm.predict_proba(X_hybrid)[0]
+    pred_idx = np.argmax(probs)
+    detected_disease = class_names[pred_idx]
+    confidence = float(probs[pred_idx])
+    
+    return {
+        "primary_disease": detected_disease,
+        "confidence": round(confidence, 4),
+        "probabilities": {class_names[i]: float(probs[i]) for i in range(len(class_names))}
+    }
