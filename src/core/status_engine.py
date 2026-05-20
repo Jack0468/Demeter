@@ -225,6 +225,6 @@ class StatusEngine:
             "health_score": health_score,
             "trajectory_7day": trajectory,
             "system_command": system_command,
-            "is_heuristic": False,
+            "is_heuristic": True,
             "recommendations": recommendations
         }
