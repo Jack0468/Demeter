@@ -32,15 +32,15 @@ except ModuleNotFoundError:
     from train_kmeans_cluster import train_health_clusters
 
 try:
-    from scripts.setup_tiller_data import load_manual_tiller_data
+    from scripts.data_prep.setup_tiller_data import load_manual_tiller_data
 except ModuleNotFoundError:
-    print("[!] Warning: scripts.setup_tiller_data not found. Tiller CNN training will be skipped.")
+    print("[!] Warning: scripts.data_prep.setup_tiller_data not found. Tiller CNN training will be skipped.")
     load_manual_tiller_data = None
 
 try:
-    from scripts.setup_biomass_data import load_biomass_data
+    from scripts.data_prep.setup_biomass_data import load_biomass_data
 except ModuleNotFoundError:
-    print("[!] Warning: scripts.setup_biomass_data not found. Biomass CNN training will be skipped.")
+    print("[!] Warning: scripts.data_prep.setup_biomass_data not found. Biomass CNN training will be skipped.")
     load_biomass_data = None
 
 # --- CONFIGURATION LOADING ---
