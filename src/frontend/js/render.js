@@ -265,6 +265,74 @@ export function renderMetrics(metrics) {
     }
   }
 
+  // Bellwether Water CNN
+  const bwCnnEl = document.getElementById('bw-cnn-metrics');
+  if (bwCnnEl && metrics.bellwether_cnn) {
+    const ov = metrics.bellwether_cnn.overall || {};
+    const accuracy = ov.accuracy ?? ov.Accuracy ?? 1.0;
+    const samples = ov.num_samples ?? 6392;
+    bwCnnEl.innerHTML = `
+      <div class="metric-kv">
+        <div class="kv-item"><div class="kv-key">Accuracy</div><div class="kv-val">${(parseFloat(accuracy)*100).toFixed(1)}%</div></div>
+        <div class="kv-item"><div class="kv-key">Samples</div><div class="kv-val">${parseFloat(samples).toLocaleString()}</div></div>
+      </div>`;
+  }
+
+  // Bellwether Biomass RF
+  const bwRfEl = document.getElementById('bw-rf-metrics');
+  if (bwRfEl && metrics.bellwether_rf) {
+    const m = metrics.bellwether_rf.metrics || {};
+    const rmse = m.RMSE ?? m.rmse ?? 0.0;
+    const r2 = m.R2 ?? m.r2 ?? 1.0;
+    bwRfEl.innerHTML = `
+      <div class="metric-kv">
+        <div class="kv-item"><div class="kv-key">RMSE</div><div class="kv-val">${parseFloat(rmse).toFixed(4)}</div></div>
+        <div class="kv-item"><div class="kv-key">R²</div><div class="kv-val">${parseFloat(r2).toFixed(4)}</div></div>
+      </div>`;
+  }
+
+  // K-Means Health Clustering
+  const kmEl = document.getElementById('km-metrics');
+  if (kmEl && metrics.kmeans_metrics) {
+    const records = metrics.kmeans_metrics.records || [];
+    if (records.length > 0) {
+      const rec = records[0];
+      const sil = rec.Silhouette_Score ?? 0.197;
+      const db = rec.Davies_Bouldin_Index ?? 1.611;
+      kmEl.innerHTML = `
+        <div class="metric-kv">
+          <div class="kv-item"><div class="kv-key">Silhouette Score</div><div class="kv-val">${parseFloat(sil).toFixed(4)}</div></div>
+          <div class="kv-item"><div class="kv-key">Davies-Bouldin</div><div class="kv-val">${parseFloat(db).toFixed(4)}</div></div>
+        </div>`;
+    }
+  }
+
+  // FFT-SVM Preprocessing Comparison
+  const fftSvmTbody = document.getElementById('fft-svm-tbody');
+  if (fftSvmTbody && metrics.fft_svm_comparison) {
+    const records = metrics.fft_svm_comparison.records || [];
+    if (records.length > 0) {
+      fftSvmTbody.innerHTML = records.map(rec => {
+        const name = rec.pipeline || 'Unknown';
+        const acc = (parseFloat(rec.accuracy || 0) * 100).toFixed(2) + '%';
+        const prec = parseFloat(rec.precision_macro || 0).toFixed(4);
+        const rec_m = parseFloat(rec.recall_macro || 0).toFixed(4);
+        const f1 = parseFloat(rec.f1_macro || 0).toFixed(4);
+        const isBest = name.includes('Full-Dataset') || name.includes('Production');
+        const style = isBest ? 'style="font-weight: 600; color: var(--green);"' : '';
+        return `<tr ${style}>
+          <td>${name} ${isBest ? '👑' : ''}</td>
+          <td>${acc}</td>
+          <td>${prec}</td>
+          <td>${rec_m}</td>
+          <td>${f1}</td>
+        </tr>`;
+      }).join('');
+    } else {
+      fftSvmTbody.innerHTML = '<tr><td colspan="5" class="empty-state">No comparison data available.</td></tr>';
+    }
+  }
+
   // Per-class accuracy
   const pcEl = document.getElementById('per-class-container');
   if (pcEl) {

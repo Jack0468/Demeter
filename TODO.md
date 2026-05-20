@@ -59,9 +59,13 @@ compare different loss functions
 CNN SPECIFIC FEATURES
 padding of image pixels to perform convolutions.
 
-
+TODO 20/05/26 :
+Provide an indepth dislay of the evaluation outputs for each model developed in this work project.
 
 PROMPTS TODO:
+Can you consider the entire project with respect to my report and give me a draft of the sections I am responsible for. Here is some context from another agent. 
+
+--------
 
 Please consider the state of the comments below here.
 CRITICAL INFO TO CONSIDER:

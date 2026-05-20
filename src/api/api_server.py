@@ -562,7 +562,7 @@ def get_metrics():
     Return parsed evaluation metrics from evaluation_outputs/.
 
     Returns:
-        JSON: { plantvillage_cnn, danforth_rf, eval_run_1 }
+        JSON: { plantvillage_cnn, danforth_rf, eval_run_1, bellwether_cnn, bellwether_rf, fft_svm_comparison, kmeans_metrics }
     """
     ev = PROJECT_ROOT / "evaluation_outputs"
     result = {}
@@ -595,6 +595,44 @@ def get_metrics():
         result["eval_run_1"] = {
             "name": "Eval Run 1 Summary",
             "records": _load_csv_as_list(e1 / "summary.csv")
+        }
+
+    # Bellwether CNN
+    bc = ev / "bellwether_cnn"
+    if bc.exists():
+        result["bellwether_cnn"] = {
+            "name": "Bellwether CNN",
+            "type": "Water Stress Classification",
+            "model_file": "demeter_cnn.keras",
+            "overall": _load_csv_as_dict(bc / "cnn_overall_metrics.csv"),
+            "per_class": _load_csv_as_list(bc / "cnn_per_class_metrics.csv"),
+            "per_class_accuracy": _load_csv_as_list(bc / "cnn_per_class_accuracy.csv")
+        }
+
+    # Bellwether RF
+    br = ev / "bellwether_rf"
+    if br.exists():
+        result["bellwether_rf"] = {
+            "name": "Bellwether Random Forest",
+            "type": "Biomass & Tiller Prediction",
+            "model_file": "demeter_rf.joblib",
+            "metrics": _load_csv_as_dict(br / "rf_regression_metrics.csv")
+        }
+
+    # FFT-SVM Preprocessing Comparison
+    fft_svm = ev / "fft_svm_experiment"
+    if fft_svm.exists():
+        result["fft_svm_comparison"] = {
+            "name": "Biological Signal Preprocessing Benchmarks",
+            "records": _load_csv_as_list(fft_svm / "fft_svm_comparison.csv")
+        }
+
+    # K-Means Clustering
+    km = ev / "eval_run_1" / "kmeans"
+    if km.exists():
+        result["kmeans_metrics"] = {
+            "name": "Unsupervised Health Clustering Metrics",
+            "records": _load_csv_as_list(km / "kmeans_metrics.csv")
         }
 
     return jsonify(result), 200

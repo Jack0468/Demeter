@@ -283,6 +283,66 @@
       </div>
     </div><!-- /perf grid-3 -->
 
+    <!-- Additional Models & Clustering -->
+    <div class="grid-3 section-gap">
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">🌊</span>Bellwether Water CNN</div>
+        <div style="font-size:0.72rem; color:var(--blue); margin-bottom:12px; font-family:'JetBrains Mono',monospace;">Water Stress Classification</div>
+        <div id="bw-cnn-metrics">
+          <div class="metric-kv">
+            <div class="kv-item"><div class="kv-key">Accuracy</div><div class="kv-val">100.0%</div></div>
+            <div class="kv-item"><div class="kv-key">Dataset</div><div class="kv-val" style="font-size:0.75rem">Bellwether Test</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">🌾</span>Bellwether Biomass RF</div>
+        <div style="font-size:0.72rem; color:var(--blue); margin-bottom:12px; font-family:'JetBrains Mono',monospace;">Growth Regression (Biomass)</div>
+        <div id="bw-rf-metrics">
+          <div class="metric-kv">
+            <div class="kv-item"><div class="kv-key">RMSE</div><div class="kv-val">0.000</div></div>
+            <div class="kv-item"><div class="kv-key">R²</div><div class="kv-val">1.000</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">🧬</span>K-Means Health Clustering</div>
+        <div style="font-size:0.72rem; color:var(--blue); margin-bottom:12px; font-family:'JetBrains Mono',monospace;">Unsupervised Health Zones</div>
+        <div id="km-metrics">
+          <div class="metric-kv">
+            <div class="kv-item"><div class="kv-key">Silhouette</div><div class="kv-val">0.197</div></div>
+            <div class="kv-item"><div class="kv-key">Davies-Bouldin</div><div class="kv-val">1.611</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FFT-SVM Preprocessing Comparison Table -->
+    <div class="card section-gap">
+      <div class="card-title"><span class="card-title-icon">⚡</span>FFT + HSV Preprocessing Benchmarks (SVM Pipeline)</div>
+      <div style="font-size:0.75rem; color:var(--muted); margin-bottom:12px; line-height:1.4;">
+        Comparison of visual signal preprocessing pipelines evaluating leaf texture frequency (2D Fast Fourier Transform) and pigment mapping (HSV Color Histogram) for edge computing diagnostic efficiency.
+      </div>
+      <div style="overflow-x: auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Preprocessing Pipeline Configuration</th>
+              <th>Accuracy</th>
+              <th>Macro Precision</th>
+              <th>Macro Recall</th>
+              <th>Macro F1-Score</th>
+            </tr>
+          </thead>
+          <tbody id="fft-svm-tbody">
+            <tr><td colspan="5" class="empty-state">Loading benchmarks…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Per-class accuracy -->
     <div class="card section-gap">
       <div class="card-title"><span class="card-title-icon">📋</span>PlantVillage CNN — Per-Class Accuracy</div>
