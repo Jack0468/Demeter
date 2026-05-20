@@ -78,7 +78,7 @@ def _ensure_models_loaded():
         if os.path.exists(rf_water_path):
             _model_state["rf_water"] = joblib.load(rf_water_path)
 
-        plantvillage_dir = str(PROJECT_ROOT / "data/layer2_health_rgb/PlantVillage")
+        plantvillage_dir = str(PROJECT_ROOT / "data/raw/vision/PlantVillage")
         if os.path.exists(plantvillage_dir):
             _model_state["class_dirs"] = sorted([
                 d for d in os.listdir(plantvillage_dir)
@@ -365,7 +365,7 @@ def get_system_status():
     
     # Check data availability
     data_available = {
-        "plantvillage": (PROJECT_ROOT / "data/layer2_health_rgb/PlantVillage").exists(),
+        "plantvillage": (PROJECT_ROOT / "data/raw/vision/PlantVillage").exists(),
         "danforth": (PROJECT_ROOT / "data/layer3_environment/plant_growth_data.csv").exists(),
         "bellwether": (PROJECT_ROOT / "data/bellwether_images_dir").exists()
     }

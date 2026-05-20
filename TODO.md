@@ -42,8 +42,15 @@ check baseline model versions so we can compare outputs based on different input
 
 Preprossessing techniques:
 perform dtft on on images to determine if the colour content of an image is a useful element in classification rather than just spatial features
-e.g. no augmenter, different activation functions on CNN
 
+NEW IDEA FOR FILTERS AND DTFT:
+1 . perform filters on the images to try and enhance features relevant to the condition of the plant. there are certain filters that can be used to enhance certain colours, shapes, textures etc. 
+2. use regular openCV classifaction to determine if image is a plant or not, then extract the plant from the image using this method. THEN perform dtft on the plant image to determine if the colour content of an image is a useful element in classification rather than just spatial features.
+
+
+e.g. no augmenter, different activation functions on CNN
+Perform the same kind of experimentation with the other baseline model ideas. 
+ 
 model changes:
 compare different activation functions
 compare different optimizers
@@ -75,7 +82,7 @@ https://github.com/awesomedata/awesome-public-datasets#agriculture
 3. Structural Fragmentation and Clutter
 The data/ directory lacks a cohesive structure and is suffering from "dumping ground" syndrome. Based on the file paths hardcoded across your scripts:
 
-Raw vs. Processed Data: You have layer2_health_rgb/PlantVillage and layer3_environment/plant_growth_data.csv acting as raw sources, but then prepare_bellwether_test_set.py dumps bellwether_rf_test.csv and bellwether_test_images/ straight into the root data/ folder.
+Raw vs. Processed Data: You have raw/vision/PlantVillage and layer3_environment/plant_growth_data.csv acting as raw sources, but then prepare_bellwether_test_set.py dumps bellwether_rf_test.csv and bellwether_test_images/ straight into the root data/ folder.
 Artifact Clutter: metadata_cache.pkl is sitting at the root of data/.
 Conflicting Log Files: inference_engine.py defines a fallback log path of data/demeter_logs.csv, while SETUP_DASHBOARD.md and the SVM script refer to data/plant_diagnostics.csv. Having multiple overlapping CSV files for logging predictions will lead to missing historical data when evaluating the system's actual performance.
 
