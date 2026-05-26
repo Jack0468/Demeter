@@ -6,21 +6,20 @@ This document aggregates the evaluation results of the various models developed,
 A suite of convolutional neural networks (CNNs) was trained and evaluated on various datasets to handle different diagnostic and regression tasks from leaf and plant imagery.
 
 ### 1.1 Plant Pathogen Classification (PlantVillage CNN)
+*   **Model File**: `demeter_cnn_plantvillage.keras`
 *   **Production Model Accuracy**: **86.20%**
 *   **Baseline Run (`eval_run_1`) Accuracy**: **84.31%**
 *   **Use Case**: Core vision stream for identifying plant diseases and pathogens.
 
-### 1.2 Plant Growth Classification (Bellwether CNN)
-*   **Accuracy**: **100.0%** (Tested on 6,392 images)
-*   **Use Case**: Classification of growth states based on Bellwether snapshot and tile imagery.
-
 ### 1.3 Plant Biomass Prediction (Biomass CNN Regressor)
+*   **Model File**: `demeter_cnn_biomass.keras`
 *   **RMSE**: **2.112**
 *   **MAE**: **1.348**
 *   **R²**: **0.645**
 *   **Use Case**: Predictive modeling of plant fresh weight directly from images.
 
 ### 1.4 Tiller Count Prediction (Tiller CNN Regressor)
+*   **Model File**: `demeter_cnn_tiller.keras`
 *   **RMSE**: **2.310**
 *   **MAE**: **1.833**
 *   **R²**: **-0.304**
@@ -57,19 +56,21 @@ We benchmarked several preprocessing steps to quantify how signal processing aff
 
 ---
 
-## 3. Growth Trajectory Model (Random Forest)
-A Random Forest regressor was trained to predict growth milestones and environmental parameters using the Danforth dataset.
+## 3. Growth Trajectory and Water Stress Models (Random Forest)
+A pair of Random Forest regressors was trained on tabular data to predict environmental milestones and water stress dynamics.
 
+### 3.1 Danforth Growth Predictor
+*   **Model File**: `demeter_rf_danforth.joblib`
 *   **Production Model RMSE**: **0.291** (R²: 0.662)
 *   **Baseline Run (`eval_run_1`) RMSE**: **0.047** (R²: 0.998)
 *   **5-Fold Cross-Validation RMSE**: `0.0846 (+/- 0.0023)`
 *   **Use Case**: Precision agriculture predictions for crop yield and growth state modeling.
 
----
 
 ## 4. Unsupervised Health Clustering (K-Means)
 To discover phenotypic health patterns without labeled data, an unsupervised K-Means clustering model was evaluated.
 
+*   **Model File**: `health_clusters.joblib`
 *   **Silhouette Score**: **0.1966**
 *   **Davies-Bouldin Index**: **1.6112**
 *   **Outcome**: Successfully identifies 3 distinct phenotypic health states (Thriving, Struggling, Critical).

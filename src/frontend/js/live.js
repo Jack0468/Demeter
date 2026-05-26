@@ -6,9 +6,6 @@ import {
   renderDiseaseCard,
   renderHybridDiseaseCard,
   renderHealthCard,
-  renderStressCards,
-  renderTrajectory,
-  renderCommandAndRecs,
   renderSensorReadouts,
   renderHistoryTable,
   renderLastUpdated,
@@ -16,14 +13,7 @@ import {
 } from './render.js';
 
 export function initLiveTab() {
-  // Initialize health ring SVG dimensions
-  const fill = document.getElementById('health-ring-fill');
-  if (fill) {
-    const r = 54;
-    const circ = 2 * Math.PI * r;
-    fill.style.strokeDasharray  = circ;
-    fill.style.strokeDashoffset = circ;
-  }
+  // No initialization needed for simplified UI
 }
 
 /**
@@ -41,9 +31,6 @@ export function refreshLiveTab(diagnosis, history) {
   renderDiseaseCard(diagnosis.cnn_result);
   renderHybridDiseaseCard(diagnosis.hybrid_prediction);
   renderHealthCard(diagnosis);
-  renderStressCards(diagnosis.stress_diagnosis);
-  renderTrajectory(diagnosis.trajectory_7day);
-  renderCommandAndRecs(diagnosis);
   renderSensorReadouts(diagnosis.sensors);
   renderHistoryTable(history);
   renderLastUpdated(diagnosis.timestamp);

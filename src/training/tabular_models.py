@@ -34,6 +34,12 @@ def train_and_save_rf_danforth(danforth_csv_path, save_path):
     
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     
+    try:
+        from src.training.split_tracker import update_manifest
+        update_manifest("demeter_rf_danforth", X_train.index.tolist(), X_test.index.tolist())
+    except Exception as e:
+        print(f"Failed to save manifest: {e}")
+    
     # We will use a Scikit-Learn Pipeline to handle categorical features automatically
     from sklearn.pipeline import Pipeline
     from sklearn.compose import ColumnTransformer

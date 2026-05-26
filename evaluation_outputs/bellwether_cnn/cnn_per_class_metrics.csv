@@ -1,3 +1,3 @@
 class,precision,recall,f1,support
-Water_Stressed,0.0,0.0,0.0,0
-Well_Watered,1.0,1.0,1.0,6392
+snapshot45667,0.0,0.0,0.0,10
+snapshot45673,0.0009203865623561896,1.0,0.0018390804597701149,10

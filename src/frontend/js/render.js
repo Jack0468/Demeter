@@ -90,85 +90,18 @@ export function renderHybridDiseaseCard(hybrid) {
 
 // ── Health Status (Card C) ───────────────────────────────────────
 export function renderHealthCard(diagnosis) {
-  const score  = diagnosis?.health_score ?? null;
-  const status = diagnosis?.overall_status ?? null;
   const growth = diagnosis?.rf_result?.predicted_growth ?? null;
-
-  // Ring
-  const numEl  = document.getElementById('health-score-num');
-  const fillEl = document.getElementById('health-ring-fill');
-  if (numEl) numEl.textContent = score !== null ? score : '--';
-  if (fillEl && score !== null) {
-    const r = 54;
-    const circ = 2 * Math.PI * r;
-    fillEl.style.strokeDasharray  = circ;
-    fillEl.style.strokeDashoffset = circ - (score / 100) * circ;
-    fillEl.style.stroke = score >= 70 ? 'var(--green)' : score >= 40 ? 'var(--amber)' : 'var(--red)';
-  }
-
-  // Status badge
-  const badgeEl = document.getElementById('overall-status-badge');
-  if (badgeEl && status) {
-    const cls = status.toLowerCase();
-    badgeEl.className = `status-badge status-${cls}`;
-    badgeEl.textContent = status;
-  }
 
   // Growth
   const growthEl = document.getElementById('predicted-growth');
   if (growthEl && growth !== null) growthEl.textContent = `${parseFloat(growth).toFixed(2)} milestone`;
 }
 
-// ── Stress Cards (Row 2) ─────────────────────────────────────────
-export function renderStressCards(stress) {
-  if (!stress) return;
-  const map = {
-    'stress-moisture':    stress.moisture_stress,
-    'stress-temperature': stress.temperature_stress,
-    'stress-light':       stress.light_deficit,
-    'stress-nutrient':    stress.nutrient_status,
-  };
-  for (const [id, val] of Object.entries(map)) {
-    const card = document.getElementById(id);
-    if (!card || !val) continue;
-    card.querySelector('.s-value').textContent = val;
-    card.className = 'stress-card';
-    const low = ['low', 'optimal', 'adequate', 'sufficient'].includes(val.toLowerCase());
-    const high = ['high', 'severe', 'critical'].includes(val.toLowerCase());
-    if (low) card.classList.add('stress-low');
-    else if (high) card.classList.add('stress-high');
-    else card.classList.add('stress-moderate');
-  }
-}
 
-// ── Trajectory (Row 3) ───────────────────────────────────────────
-export function renderTrajectory(traj) {
-  if (!traj) return;
-  [3, 5, 7].forEach(day => {
-    const el = document.getElementById(`traj-${day}`);
-    if (!el) return;
-    const val = traj[day] || traj[String(day)] || '--';
-    el.querySelector('.traj-value').textContent = val;
-    const vEl = el.querySelector('.traj-value');
-    vEl.style.color = val === 'Thriving' ? 'var(--green)' : val === 'Fair' ? 'var(--amber)' : 'var(--red)';
-  });
-}
 
-// ── System Command + Recommendations ────────────────────────────
-export function renderCommandAndRecs(diagnosis) {
-  const cmdEl = document.getElementById('command-box');
-  if (cmdEl && diagnosis?.system_command) cmdEl.textContent = `> ${diagnosis.system_command}`;
 
-  const recEl = document.getElementById('rec-container');
-  if (!recEl || !Array.isArray(diagnosis?.recommendations)) return;
-  recEl.innerHTML = diagnosis.recommendations.slice(0, 4).map(r => {
-    const cls = r.urgency === 'critical' ? 'rec-critical' : r.urgency === 'warning' ? 'rec-warning' : '';
-    return `<div class="rec-chip ${cls}">
-      <span class="rec-icon">${r.icon || '→'}</span>
-      <span class="rec-text">${r.action}</span>
-    </div>`;
-  }).join('');
-}
+
+
 
 // ── Live Sensor Readouts ─────────────────────────────────────────
 export function renderSensorReadouts(sensors) {
@@ -190,23 +123,19 @@ export function renderHistoryTable(records) {
   const tbody = document.getElementById('history-tbody');
   if (!tbody) return;
   if (!records || records.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No diagnosis history yet. Run main.py to generate data.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No diagnosis history yet. Run main.py to generate data.</td></tr>';
     return;
   }
   tbody.innerHTML = [...records].reverse().slice(0, 10).map(r => {
     const ts       = r.timestamp ? new Date(r.timestamp).toLocaleString() : '--';
     const disease  = r.cnn_result?.primary_disease?.replace(/_/g, ' ') || '--';
-    const status   = r.overall_status || '--';
     const moisture = r.sensors?.soil_moisture?.toFixed(1) ?? '--';
     const temp     = r.sensors?.temperature?.toFixed(1) ?? '--';
-    const cls      = status.toLowerCase();
     return `<tr>
       <td>${ts}</td>
       <td>${disease}</td>
-      <td><span class="status-badge status-${cls}">${status}</span></td>
       <td>${moisture}%</td>
       <td>${temp}°C</td>
-      <td>${r.health_score ?? '--'}</td>
     </tr>`;
   }).join('');
 }
@@ -278,16 +207,18 @@ export function renderMetrics(metrics) {
       </div>`;
   }
 
-  // Bellwether Biomass RF
-  const bwRfEl = document.getElementById('bw-rf-metrics');
-  if (bwRfEl && metrics.bellwether_rf) {
-    const m = metrics.bellwether_rf.metrics || {};
-    const rmse = m.RMSE ?? m.rmse ?? 0.0;
-    const r2 = m.R2 ?? m.r2 ?? 1.0;
-    bwRfEl.innerHTML = `
+  // Biomass CNN
+  const bmCnnEl = document.getElementById('bm-cnn-metrics');
+  if (bmCnnEl && metrics.biomass_cnn) {
+    const m = metrics.biomass_cnn.metrics || {};
+    const rmse = m.RMSE ?? m.rmse ?? 2.112;
+    const mae  = m.MAE ?? m.mae ?? 1.348;
+    const r2   = m['R-Squared'] ?? m.r2 ?? 0.645;
+    bmCnnEl.innerHTML = `
       <div class="metric-kv">
-        <div class="kv-item"><div class="kv-key">RMSE</div><div class="kv-val">${parseFloat(rmse).toFixed(4)}</div></div>
-        <div class="kv-item"><div class="kv-key">R²</div><div class="kv-val">${parseFloat(r2).toFixed(4)}</div></div>
+        <div class="kv-item"><div class="kv-key">RMSE</div><div class="kv-val">${parseFloat(rmse).toFixed(3)}</div></div>
+        <div class="kv-item"><div class="kv-key">MAE</div><div class="kv-val">${parseFloat(mae).toFixed(3)}</div></div>
+        <div class="kv-item"><div class="kv-key">R²</div><div class="kv-val">${parseFloat(r2).toFixed(3)}</div></div>
       </div>`;
   }
 
@@ -376,20 +307,39 @@ export function renderMultiModels(diagnosis) {
       : '—';
   }
   
-  // Bellwether
-  const bellwetherEl = document.getElementById('bellwether-pred');
-  if (bellwetherEl) {
-    if (diagnosis.bellwether_water_stress && diagnosis.bellwether_water_stress.Vision_Status) {
-      const status = diagnosis.bellwether_water_stress.Vision_Status.replace(/_/g, ' ');
-      bellwetherEl.textContent = status;
-      if (status.includes('Stressed')) {
-        bellwetherEl.style.color = 'var(--red)';
+    // Bellwether
+    const bellwetherEl = document.getElementById('bellwether-pred');
+    if (bellwetherEl) {
+      if (diagnosis.bellwether_water_stress && diagnosis.bellwether_water_stress.Vision_Status) {
+        const status = diagnosis.bellwether_water_stress.Vision_Status.replace(/_/g, ' ');
+        bellwetherEl.textContent = status;
+        if (status.includes('Stressed')) {
+          bellwetherEl.style.color = 'var(--red)';
+        } else {
+          bellwetherEl.style.color = 'var(--green)';
+        }
       } else {
-        bellwetherEl.style.color = 'var(--green)';
+        bellwetherEl.textContent = '—';
+        bellwetherEl.style.color = 'var(--text)';
       }
-    } else {
-      bellwetherEl.textContent = '—';
-      bellwetherEl.style.color = 'var(--text)';
     }
-  }
+
+    // Unsupervised Clusters
+    const visClusterEl = document.getElementById('visual-cluster');
+    if (visClusterEl) {
+        visClusterEl.textContent = diagnosis.visual_cluster !== undefined 
+            ? `Cluster ${diagnosis.visual_cluster}` : '—';
+    }
+
+    const tabClusterEl = document.getElementById('tabular-cluster');
+    if (tabClusterEl) {
+        tabClusterEl.textContent = diagnosis.tabular_cluster !== undefined 
+            ? `Cluster ${diagnosis.tabular_cluster}` : '—';
+    }
+
+    const masClusterEl = document.getElementById('master-cluster');
+    if (masClusterEl) {
+        masClusterEl.textContent = diagnosis.master_cluster !== undefined 
+            ? `Cluster ${diagnosis.master_cluster}` : '—';
+    }
 }

@@ -33,10 +33,8 @@ PROJECT_ROOT = _current_dir if _current_dir.name == "Demeter" else _current_dir.
 # Import our new modules
 try:
     from src.core.output_formatter import OutputFormatter
-    from src.core.status_engine import StatusEngine
-except ModuleNotFoundError:
+except ImportError:
     from output_formatter import OutputFormatter
-    from status_engine import StatusEngine
 
 def load_models(cnn_path, rf_path):
     """Loads both the pre-trained CNN and Random Forest models."""
@@ -162,8 +160,6 @@ def generate_complete_diagnosis(
     """
     # Initialize components
     formatter = OutputFormatter()
-    status_engine = StatusEngine()
-    
     # Format disease detection
     # Note: we filter out multi-model results from all_predictions for the legacy formatter
     filtered_preds = {k: v for k, v in all_predictions.items() if not k.endswith("_result")}
@@ -198,14 +194,14 @@ def generate_complete_diagnosis(
     if "hybrid_result" in all_predictions and all_predictions["hybrid_result"]:
         merged["hybrid_prediction"] = all_predictions["hybrid_result"]
 
-    # Generate status and recommendations
-    full_diagnosis = status_engine.generate_full_diagnosis(
-        disease_confidence, detected_disease, soil_moisture,
-        temperature, sunlight_hours, predicted_growth, humidity
-    )
-    
-    # Merge everything
-    diagnosis = {**merged, **full_diagnosis}
+    if "visual_cluster" in all_predictions:
+        merged["visual_cluster"] = all_predictions["visual_cluster"]
+    if "tabular_cluster" in all_predictions:
+        merged["tabular_cluster"] = all_predictions["tabular_cluster"]
+    if "master_cluster" in all_predictions:
+        merged["master_cluster"] = all_predictions["master_cluster"]
+
+    diagnosis = merged
     
     # Save outputs
     formatter.save_latest(diagnosis)
@@ -253,7 +249,6 @@ def analyze_plant_status(img_array, water_amount, weight, cnn_model, rf_model, c
     
     # Generate the Action Plan
     action_plan = {
-        "Needs_Fertilizer": "Yes" if rf_prediction < 0.9 * weight else "No",
         "Vision_Status": detected_status_vision,
         "Predicted_Future_Weight": round(float(rf_prediction), 2)
     }
