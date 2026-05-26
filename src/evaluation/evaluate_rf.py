@@ -79,25 +79,32 @@ def evaluate_rf(model_path, csv_dataset_path, out_dir=None):
         print("Random Forest classification evaluation complete. Results saved to:", out_dir)
         return
 
-    # Otherwise treat as regression
-    possible_targets = ['Growth_Score', 'Yield', 'Final_Height', 'Days_to_Maturity']
-    target_col = None
-    for t in possible_targets:
-        if t in df.columns:
-            target_col = t
-            break
+    if 'weight after' in df.columns and 'weight before' in df.columns:
+        target_col = 'weight after'
+        print(f"Using '{target_col}' as regression target (Bellwether specific).")
+        df_clean = df.dropna(subset=['weight before', 'water amount', 'weight after']).copy()
+        X = df_clean[['weight before', 'water amount']]
+        y_true = df_clean[target_col].values
+    else:
+        # Otherwise treat as regression
+        possible_targets = ['Growth_Score', 'Yield', 'Final_Height', 'Days_to_Maturity']
+        target_col = None
+        for t in possible_targets:
+            if t in df.columns:
+                target_col = t
+                break
 
-    if target_col is None:
-        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-        if numeric_cols:
-            target_col = numeric_cols[-1]
-        else:
-            raise ValueError('No suitable regression target found in CSV')
+        if target_col is None:
+            numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+            if numeric_cols:
+                target_col = numeric_cols[-1]
+            else:
+                raise ValueError('No suitable regression target found in CSV')
 
-    print(f"Using '{target_col}' as regression target.")
-    df_clean = df.dropna().copy()
-    X = df_clean.drop(columns=[target_col])
-    y_true = df_clean[target_col].values
+        print(f"Using '{target_col}' as regression target.")
+        df_clean = df.dropna().copy()
+        X = df_clean.drop(columns=[target_col])
+        y_true = df_clean[target_col].values
 
     print("Generating predictions...")
     y_pred = model.predict(X)

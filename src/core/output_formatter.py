@@ -127,8 +127,7 @@ class OutputFormatter:
         self,
         disease_result: Dict[str, Any],
         growth_result: Dict[str, Any],
-        sensor_data: Dict[str, Any],
-        stress_diagnosis: Optional[Dict[str, str]] = None
+        sensor_data: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
         Merge all diagnosis components into unified result.
@@ -137,7 +136,6 @@ class OutputFormatter:
             disease_result: Output from format_disease_detection()
             growth_result: Output from format_growth_prediction()
             sensor_data: Output from format_sensor_data()
-            stress_diagnosis: Stress levels dict {factor: level}
             
         Returns:
             Complete diagnosis record
@@ -145,13 +143,7 @@ class OutputFormatter:
         merged = {
             **disease_result,
             **growth_result,
-            "sensors": sensor_data,
-            "stress_diagnosis": stress_diagnosis or {
-                "moisture_stress": "Unknown",
-                "temperature_stress": "Unknown",
-                "light_deficit": "Unknown",
-                "nutrient_status": "Unknown"
-            }
+            "sensors": sensor_data
         }
         
         return merged
@@ -216,8 +208,7 @@ def quick_format_diagnosis(
     temperature: float,
     soil_moisture: float,
     sunlight_hours: float,
-    humidity: Optional[float] = None,
-    stress_diagnosis: Optional[Dict[str, str]] = None
+    humidity: Optional[float] = None
 ) -> Dict[str, Any]:
     """
     One-shot function to format a complete diagnosis.
@@ -240,7 +231,7 @@ def quick_format_diagnosis(
     )
     
     diagnosis = formatter.merge_diagnosis(
-        disease_result, growth_result, sensor_data, stress_diagnosis
+        disease_result, growth_result, sensor_data
     )
     
     return diagnosis

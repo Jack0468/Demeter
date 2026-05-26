@@ -1,2 +1,0 @@
-model,dataset,accuracy,num_samples
-demeter_cnn_plantvillage.keras,PlantVillage,0.8620021319895339,20638

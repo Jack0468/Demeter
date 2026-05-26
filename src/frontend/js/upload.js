@@ -58,7 +58,10 @@ export function initUpload(onResult) {
     analyzeBtn.addEventListener('click', async () => {
       if (!selectedFile) { alert('Please select a plant image first.'); return; }
       analyzeBtn.disabled = true;
-      analyzeBtn.textContent = 'Analyzing…';
+      analyzeBtn.textContent = 'Processing inference…';
+      
+      const grid = document.getElementById('live-grid');
+      if (grid) grid.style.opacity = '0.5';
 
       const sensors = {};
       ['temperature', 'soil_moisture', 'sunlight_hours', 'humidity'].forEach(name => {
@@ -76,8 +79,10 @@ export function initUpload(onResult) {
       } catch (e) {
         alert('Analysis failed: ' + e.message);
       } finally {
-        analyzeBtn.textContent = 'Analyze Plant';
+        analyzeBtn.textContent = 'Analyse Plant';
         analyzeBtn.disabled = false;
+        const grid = document.getElementById('live-grid');
+        if (grid) grid.style.opacity = '1';
       }
     });
   }
@@ -99,5 +104,8 @@ function setFile(file) {
   };
   reader.readAsDataURL(file);
   const btn = document.getElementById('analyze-btn');
-  if (btn) btn.style.display = 'inline-block';
+  if (btn) {
+    btn.style.display = 'inline-block';
+    btn.textContent = 'Analyse Plant';
+  }
 }

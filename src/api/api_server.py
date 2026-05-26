@@ -34,7 +34,7 @@ CSV_LOG_FILE = str(PROJECT_ROOT / "data" / "plant_diagnostics.csv")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # ==========================================
-# LAZY MODEL LOADING STATE
+# EAGER MODEL LOADING STATE
 # ==========================================
 _model_state = {
     "loaded": False,
@@ -48,12 +48,15 @@ _model_state = {
     "hybrid_fft_pca": None,
     "hybrid_fft_scaler": None,
     "hybrid_hist_scaler": None,
+    "visual_kmeans": None,
+    "tabular_kmeans": None,
+    "master_kmeans": None,
     "class_dirs": [],
     "error": None
 }
 
-def _ensure_models_loaded():
-    """Lazy-load ML models on first /api/predict call."""
+def _load_models():
+    """Load ML models eagerly at startup."""
     if _model_state["loaded"]:
         return
     try:
@@ -97,6 +100,17 @@ def _ensure_models_loaded():
             _model_state["hybrid_fft_scaler"] = joblib.load(hybrid_fft_scaler_path)
         if os.path.exists(hybrid_hist_scaler_path):
             _model_state["hybrid_hist_scaler"] = joblib.load(hybrid_hist_scaler_path)
+            
+        visual_km_path = str(PROJECT_ROOT / "models/visual_health_clusters.joblib")
+        tabular_km_path = str(PROJECT_ROOT / "models/tabular_health_clusters.joblib")
+        master_km_path = str(PROJECT_ROOT / "models/master_health_clusters.joblib")
+        
+        if os.path.exists(visual_km_path):
+            _model_state["visual_kmeans"] = joblib.load(visual_km_path)
+        if os.path.exists(tabular_km_path):
+            _model_state["tabular_kmeans"] = joblib.load(tabular_km_path)
+        if os.path.exists(master_km_path):
+            _model_state["master_kmeans"] = joblib.load(master_km_path)
  
         plantvillage_dir = str(PROJECT_ROOT / "data/raw/vision/PlantVillage")
         if os.path.exists(plantvillage_dir):
@@ -113,6 +127,10 @@ def _ensure_models_loaded():
         _model_state["error"] = str(e)
         print(f"[Demeter] Model loading error: {e}")
 
+# Eagerly load models immediately upon module import
+print("\n[Demeter] Eagerly loading models for fast inference... This will take a moment.")
+_load_models()
+print("[Demeter] Models loaded! Ready for traffic.")
 
 def _load_csv_as_dict(filepath) -> dict:
     """Load a single-row CSV into a dict."""
@@ -427,8 +445,6 @@ def predict():
     Returns:
         JSON: Complete diagnosis payload
     """
-    _ensure_models_loaded()
-
     if _model_state["cnn"] is None or _model_state["rf"] is None:
         msg = _model_state.get("error") or "Models not available — train or place models in /models/"
         return jsonify({"error": msg}), 503
@@ -510,6 +526,8 @@ def predict():
             growth = future_growth.result()
             
             all_preds = disease.get("All_Predictions", {})
+            pv_conf = disease.get("Disease_Confidence", 0.0)
+            rf_growth = growth.get("Predicted_Growth_Milestone", 0.0)
             
             # Biomass
             biomass_val = 50.0
@@ -522,11 +540,13 @@ def predict():
                 all_preds["tiller_result"] = future_tiller.result()
                 
             # Hybrid SVM
+            svm_conf = 0.0
             if future_hybrid:
-                all_preds["hybrid_result"] = future_hybrid.result()
+                hybrid_res = future_hybrid.result()
+                all_preds["hybrid_result"] = hybrid_res
+                svm_conf = hybrid_res.get("confidence", 0.0)
 
-            # Water Stress (needs biomass_val, so we run it after biomass completes, or wait for biomass)
-            # Alternatively, we could have run it concurrently if we estimated biomass_val, but waiting is safer.
+            # Water Stress
             if _model_state["cnn_water"] and _model_state["rf_water"]:
                 bellwether_result = analyze_plant_status(
                     img_array, 
@@ -537,6 +557,31 @@ def predict():
                     class_names=["Water_Stressed", "Well_Watered"]
                 )
                 all_preds["bellwether_result"] = bellwether_result
+                
+            # Domain-Specific K-Means Clustering
+            import pandas as pd
+            if _model_state["visual_kmeans"]:
+                df_vis = pd.DataFrame([{
+                    "plantvillage_confidence": pv_conf,
+                    "biomass_weight": biomass_val,
+                    "hybrid_svm_confidence": svm_conf
+                }])
+                all_preds["visual_cluster"] = int(_model_state["visual_kmeans"].predict(df_vis)[0])
+                
+            if _model_state["tabular_kmeans"]:
+                df_tab = pd.DataFrame([{
+                    "predicted_growth_milestone": rf_growth
+                }])
+                all_preds["tabular_cluster"] = int(_model_state["tabular_kmeans"].predict(df_tab)[0])
+                
+            if _model_state["master_kmeans"]:
+                df_mas = pd.DataFrame([{
+                    "plantvillage_confidence": pv_conf,
+                    "biomass_weight": biomass_val,
+                    "hybrid_svm_confidence": svm_conf,
+                    "predicted_growth_milestone": rf_growth
+                }])
+                all_preds["master_cluster"] = int(_model_state["master_kmeans"].predict(df_mas)[0])
 
         diagnosis = generate_complete_diagnosis(
             image_path=image_path,
@@ -635,6 +680,21 @@ def get_metrics():
             "records": _load_csv_as_list(km / "kmeans_metrics.csv")
         }
 
+    # Biomass CNN
+    bm = ev / "biomass"
+    if bm.exists():
+        bm_metrics = {}
+        bm_list = _load_csv_as_list(bm / "biomass_cnn_metrics.csv")
+        for row in bm_list:
+            if "Metric" in row and "Value" in row:
+                bm_metrics[row["Metric"]] = row["Value"]
+        result["biomass_cnn"] = {
+            "name": "Biomass CNN Regressor",
+            "type": "Continuous Plant Fresh Weight",
+            "model_file": "demeter_cnn_biomass.keras",
+            "metrics": bm_metrics
+        }
+
     return jsonify(result), 200
 
 
@@ -715,7 +775,4 @@ if __name__ == "__main__":
     print("\nStarting on http://localhost:5000")
     print("=" * 60)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    print("\n[Demeter] Pre-loading models for faster inference... This will take a moment.")
-    _ensure_models_loaded()
-    print("[Demeter] Models loaded! Ready for traffic.")
     app.run(debug=False, host="0.0.0.0", port=5000)

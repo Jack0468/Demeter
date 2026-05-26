@@ -1,8 +1,8 @@
-                precision    recall  f1-score   support
+               precision    recall  f1-score   support
 
-Water_Stressed       0.00      0.00      0.00         0
-  Well_Watered       1.00      1.00      1.00      6392
+snapshot45667       0.00      0.00      0.00        10
+snapshot45673       0.00      1.00      0.00        10
 
-      accuracy                           1.00      6392
-     macro avg       0.50      0.50      0.50      6392
-  weighted avg       1.00      1.00      1.00      6392
+    micro avg       0.00      0.50      0.00        20
+    macro avg       0.00      0.50      0.00        20
+ weighted avg       0.00      0.50      0.00        20

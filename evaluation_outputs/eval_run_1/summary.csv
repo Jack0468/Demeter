@@ -1,3 +1,0 @@
-model,dataset,accuracy,num_samples,run,RMSE,CV_Mean_RMSE,CV_Std_RMSE,MSE,MAE,R2
-demeter_cnn_plantvillage.keras,PlantVillage,0.8431534063378234,20638.0,eval_run_1,,,,,,
-rf,,,,eval_run_1,0.0473959143937328,0.0846414722872569,0.0023146270959875,0.002246372701218,0.0084860878910914,0.997786965707572

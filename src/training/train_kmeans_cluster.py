@@ -5,72 +5,70 @@ import numpy as np
 import joblib
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import silhouette_score
 from pathlib import Path
 
-# --- DYNAMIC PROJECT ROOT RESOLUTION ---
 _current_dir = Path(__file__).resolve().parent
 PROJECT_ROOT = _current_dir.parent.parent if _current_dir.parent.name == "src" else _current_dir.parent
 
-def train_health_clusters(csv_path: str, save_path: str, n_clusters: int = 3):
-    """
-    Trains an unsupervised K-Means clustering model to group plants into
-    health states based on statistical similarities in environmental and visual data.
-    
-    This replaces the flawed supervised NN/SVM ensemble approach.
-    """
-    print("Initializing Unsupervised Health Clustering Pipeline (K-Means)...")
+def train_health_clusters(csv_path: str, save_path: str, features_present: list, n_clusters: int = 3):
+    print(f"Initializing Unsupervised Health Clustering for {save_path}...")
     
     if not os.path.exists(csv_path):
         print(f"[!] ERROR: Data file not found at {csv_path}")
         return False
         
     df = pd.read_csv(csv_path)
+    available_features = [col for col in features_present if col in df.columns]
     
-    # Identify available numeric features to cluster on.
-    # In a production environment, this should be the joined table of
-    # CNN outputs (e.g., disease_confidence) and RF inputs (e.g., Temp, Moisture).
-    expected_features = ['Temp', 'Moisture', 'Light', 'disease_confidence', 'water amount']
-    features_present = [col for col in expected_features if col in df.columns]
-    
-    if len(features_present) < 2:
-        print("[!] Warning: Few expected features found. Falling back to all numeric columns.")
-        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-        
-        # Remove known target/label columns from clustering features
-        blacklist = ['Growth_Milestone', 'label_int', 'tiller_count', 'weight after']
-        features_present = [c for c in numeric_cols if c not in blacklist]
-        
-    if not features_present:
+    if len(available_features) < 1:
         print("[!] ERROR: No suitable numeric features found for clustering.")
         return False
         
-    print(f"Clustering on features: {features_present}")
+    print(f"Clustering on features: {available_features}")
     
-    df_clean = df.dropna(subset=features_present).copy()
-    X = df_clean[features_present]
+    df_clean = df.dropna(subset=available_features).copy()
+    if df_clean.empty:
+        print("[!] ERROR: Dataset is empty after dropping NaNs.")
+        return False
+        
+    X = df_clean[available_features]
     
-    # 1. Normalize the features. 
-    # K-Means is highly sensitive to variance and scale (e.g., Temp is 25, Confidence is 0.8).
+    # We use the entire bootstrapped CSV (which is already restricted to the base models' Test splits)
+    # We will do a further 80/20 train/test split purely for K-Means evaluation
+    from sklearn.model_selection import train_test_split
+    X_train, X_test = train_test_split(X, test_size=0.2, random_state=42)
+    
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
     
-    # 2. Train K-Means
-    print(f"Running K-Means with {n_clusters} clusters...")
+    print(f"Running K-Means with {n_clusters} clusters on {len(X_train)} train samples...")
     kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init='auto')
-    cluster_labels = kmeans.fit_predict(X_scaled)
     
-    # 3. Analyze the generated clusters
-    df_clean['Cluster'] = cluster_labels
+    # Train only on X_train
+    kmeans.fit(X_train_scaled)
+    
+    # Evaluate on X_test
+    try:
+        test_labels = kmeans.predict(X_test_scaled)
+        if len(set(test_labels)) > 1:
+            score = silhouette_score(X_test_scaled, test_labels)
+            print(f"Silhouette Score on Test Set: {score:.4f}")
+        else:
+            print("Silhouette Score: N/A (Only 1 cluster found in test set)")
+    except Exception as e:
+        print(f"Could not compute silhouette score: {e}")
+        
     cluster_centers = scaler.inverse_transform(kmeans.cluster_centers_)
     
     print("\n--- Cluster Center Profiles ---")
-    for i in range(n_clusters):
+    for i in range(len(cluster_centers)):
         print(f"\nCluster {i} Profile:")
-        for j, feature in enumerate(features_present):
+        for j, feature in enumerate(available_features):
             print(f"  - {feature}: {cluster_centers[i][j]:.4f}")
             
-    # Save the model and the scaler as a pipeline
-    from sklearn.pipeline import Pipeline
     cluster_pipeline = Pipeline([
         ('scaler', scaler),
         ('kmeans', kmeans)
@@ -78,20 +76,22 @@ def train_health_clusters(csv_path: str, save_path: str, n_clusters: int = 3):
     
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     joblib.dump(cluster_pipeline, save_path)
-    print(f"\nK-Means Pipeline successfully saved to {save_path}")
-    
-    # Optionally save the labeled data for analysis
-    output_csv = os.path.join(os.path.dirname(save_path), 'clustered_data.csv')
-    df_clean.to_csv(output_csv, index=False)
-    print(f"Labeled dataset saved to {output_csv}")
-    
+    print(f"Pipeline successfully saved to {save_path}\n")
     return True
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train K-Means clustering for plant health states.")
-    parser.add_argument("--csv", type=str, required=True, help="Path to the unified CSV dataset.")
-    parser.add_argument("--out", type=str, default=str(PROJECT_ROOT / "models" / "health_clusters.joblib"), help="Path to save the pipeline.")
-    parser.add_argument("--clusters", type=int, default=3, help="Number of clusters (default 3 for Thriving, Fair, Critical).")
-    
+    parser.add_argument("--clusters", type=int, default=3, help="Number of clusters.")
     args = parser.parse_args()
-    train_health_clusters(args.csv, args.out, args.clusters)
+    
+    # 1. Visual Clusters
+    visual_csv = PROJECT_ROOT / "data" / "processed" / "visual_features_test.csv"
+    visual_out = PROJECT_ROOT / "models" / "visual_health_clusters.joblib"
+    visual_feats = ['plantvillage_confidence', 'biomass_weight', 'hybrid_svm_confidence']
+    train_health_clusters(str(visual_csv), str(visual_out), visual_feats, args.clusters)
+    
+    # 2. Tabular Clusters
+    tabular_csv = PROJECT_ROOT / "data" / "processed" / "tabular_features_test.csv"
+    tabular_out = PROJECT_ROOT / "models" / "tabular_health_clusters.joblib"
+    tabular_feats = ['predicted_growth_milestone']
+    train_health_clusters(str(tabular_csv), str(tabular_out), tabular_feats, args.clusters)

@@ -1,2 +1,2 @@
 model,dataset,accuracy,num_samples
-demeter_cnn.keras,bellwether_test_images,1.0,6392
+demeter_cnn.keras,images,0.0009203865623561896,10865

@@ -77,6 +77,12 @@ def train_and_save_cnn_plantvillage(plantvillage_dir, save_path, img_height=150,
         image_paths_array, labels_array, test_size=0.2, random_state=123, stratify=labels_array
     )
     
+    try:
+        from src.training.split_tracker import update_manifest
+        update_manifest("demeter_cnn_plantvillage", X_train_paths, X_val_paths)
+    except Exception as e:
+        print(f"Failed to save manifest: {e}")
+    
     print(f"Training on {len(X_train_paths)} images, validating on {len(X_val_paths)} images.")
     
     # 4. Build tf.data pipeline
@@ -126,90 +132,6 @@ def train_and_save_cnn_plantvillage(plantvillage_dir, save_path, img_height=150,
     # Evaluate CNN internally
     loss, accuracy = model.evaluate(val_ds, verbose=0)
     print(f"PlantVillage CNN - Val Loss: {loss:.4f}, Val Accuracy: {accuracy:.4f}")
-    
-    # Save Model
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    model.save(save_path)
-    print(f"CNN successfully saved to {save_path}")
-    
-    return class_names
-
-
-# ==========================================
-# 3. CNN TRAINING PIPELINE - BELLWETHER WATER STRESS (Original)
-# ==========================================
-def train_and_save_cnn(df, base_dir, save_path, img_height=150, img_width=150, epochs=5):
-    """Trains the Transfer Learning CNN using a DataFrame and saves it."""
-    print("Initializing CNN Training Pipeline...")
-    
-    # 1. Isolate Visible Spectrum Images and construct file paths
-    df_vis = df[df['spectrum'].str.contains('Visible', na=False, case=False)].copy()
-    df_vis['filepath'] = df_vis.apply(
-        lambda row: os.path.join(base_dir, f"snapshot{row['parent snapshot id']}", f"{row['name']}.jpg"),
-        axis=1
-    )
-    
-    # 2. Filter out paths that don't exist AND ignore 0-byte (empty) files
-    df_vis = df_vis[df_vis['filepath'].apply(lambda p: os.path.exists(p) and os.path.getsize(p) > 0)]
-    
-    if df_vis.empty:
-        print("[!] ERROR: No valid image paths found. Check WSL mount mapping.")
-        return []
-
-    # 3. Create a binary classification target (e.g., Water Stressed vs Well Watered)
-    # Using the median water amount as a simple threshold for the Demeter prototype
-    median_water = df_vis['water amount'].median()
-    df_vis['label_int'] = (df_vis['water amount'] >= median_water).astype(int)
-    class_names = ['Water_Stressed', 'Well_Watered']
-    num_classes = len(class_names)
-
-    # 4. Split data
-    train_df, val_df = train_test_split(df_vis, test_size=0.2, random_state=123)
-    print(f"Training on {len(train_df)} images, validating on {len(val_df)} images.")
-
-    # 5. Build tf.data pipeline
-    def process_path(file_path, label):
-        img = tf.io.read_file(file_path)
-        img = tf.image.decode_jpeg(img, channels=3)
-        img = tf.image.resize(img, [img_height, img_width])
-        return img, label
-
-    def create_dataset(dataframe):
-        paths = dataframe['filepath'].values
-        labels = dataframe['label_int'].values
-        ds = tf.data.Dataset.from_tensor_slices((paths, labels))
-        ds = ds.map(process_path, num_parallel_calls=tf.data.AUTOTUNE)
-        ds = ds.batch(32).prefetch(tf.data.AUTOTUNE)
-        return ds
-
-    train_ds = create_dataset(train_df)
-    val_ds = create_dataset(val_df)
-
-    # 6. Build Architecture
-    base_model = MobileNetV2(input_shape=(img_height, img_width, 3), include_top=False, weights='imagenet')
-    base_model.trainable = False 
-
-    augmenter = get_augmenter(img_height, img_width)
-
-    model = models.Sequential([
-        augmenter,
-        base_model,
-        layers.GlobalAveragePooling2D(),
-        layers.Dense(128, activation='relu'),
-        layers.Dropout(0.2),
-        layers.Dense(num_classes, activation='softmax')
-    ])
-    
-    model.compile(optimizer='adam',
-                  loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
-                  metrics=['accuracy'])
-    
-    print(f"Training CNN for {epochs} epochs...")
-    model.fit(train_ds, validation_data=val_ds, epochs=epochs)
-    
-    # Evaluate CNN internally
-    loss, accuracy = model.evaluate(val_ds, verbose=0)
-    print(f"Bellwether CNN - Val Loss: {loss:.4f}, Val Accuracy: {accuracy:.4f}")
     
     # Save Model
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
@@ -410,6 +332,12 @@ def train_biomass_cnn_regressor(df, save_path, target='fresh_weight', img_height
     val_df   = df_clean[df_clean['plant_id'].isin(val_plants)]
     print(f"Training on {len(train_df)} images ({len(train_df['plant_id'].unique())} plants), "
           f"validating on {len(val_df)} images ({len(val_df['plant_id'].unique())} plants).")
+          
+    try:
+        from src.training.split_tracker import update_manifest
+        update_manifest("demeter_cnn_biomass", train_df['filepath'].values, val_df['filepath'].values)
+    except Exception as e:
+        print(f"Failed to save manifest: {e}")
 
     def process_path(file_path, label):
         img = tf.io.read_file(file_path)

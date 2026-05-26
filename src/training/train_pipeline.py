@@ -23,11 +23,11 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 try:
-    from src.training.vision_models import train_and_save_cnn, train_and_save_cnn_plantvillage, train_tiller_cnn_regressor, train_biomass_cnn_regressor
+    from src.training.vision_models import train_and_save_cnn_plantvillage, train_tiller_cnn_regressor, train_biomass_cnn_regressor
     from src.training.tabular_models import train_and_save_rf, train_and_save_rf_danforth
     from src.training.train_kmeans_cluster import train_health_clusters
 except ModuleNotFoundError:
-    from vision_models import train_and_save_cnn, train_and_save_cnn_plantvillage, train_tiller_cnn_regressor, train_biomass_cnn_regressor
+    from vision_models import train_and_save_cnn_plantvillage, train_tiller_cnn_regressor, train_biomass_cnn_regressor
     from tabular_models import train_and_save_rf, train_and_save_rf_danforth
     from train_kmeans_cluster import train_health_clusters
 
@@ -169,11 +169,6 @@ def main():
         print("\n[!] Danforth RF not found or retrain forced. Training...")
         train_and_save_rf_danforth(danforth_csv_path, danforth_rf_model_path)
         print("[!] Danforth RF training complete.\n")
-    
-    if metadata_df is not None and (not os.path.exists(cnn_model_path) or train_bellwether_cnn):
-        print("\n[!] Bellwether CNN not found or retrain forced. Training...")
-        train_and_save_cnn(metadata_df, bellwether_dir, cnn_model_path, epochs=config['training']['epochs'])
-        print("[!] Bellwether CNN training complete.\n")
     
     if metadata_df is not None and (not os.path.exists(rf_model_path) or train_bellwether_rf):
         print("\n[!] Bellwether RF not found or retrain forced. Training...")
