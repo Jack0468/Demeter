@@ -1,0 +1,9 @@
+              precision    recall  f1-score   support
+
+      Pepper       0.96      1.00      0.98      2475
+      Potato       0.95      0.98      0.96      2152
+      Tomato       1.00      0.99      0.99     16011
+
+    accuracy                           0.99     20638
+   macro avg       0.97      0.99      0.98     20638
+weighted avg       0.99      0.99      0.99     20638

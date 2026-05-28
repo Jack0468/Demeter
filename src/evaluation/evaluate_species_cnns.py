@@ -74,7 +74,7 @@ def evaluate_model(model_path, test_ds, class_names, out_dir, model_name):
     print(f"[+] {model_name} evaluation complete. Acc: {acc:.4f}. Outputs in {out_dir}")
 
 
-def evaluate_species_pipeline(plantvillage_dir, out_dir=None, img_height=150, img_width=150, batch_size=32):
+def evaluate_species_pipeline(plantvillage_dir, out_dir=None, img_height=224, img_width=224, batch_size=32):
     if out_dir is None:
         out_dir = str(PROJECT_ROOT / "evaluation_outputs/species_cnns")
     os.makedirs(out_dir, exist_ok=True)

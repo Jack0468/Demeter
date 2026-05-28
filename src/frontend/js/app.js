@@ -34,15 +34,6 @@ async function refresh() {
   const online = await checkHealth();
   renderApiPill(online);
 
-  if (!online) return;
-
-  const [diagnosis, history] = await Promise.all([
-    fetchLatest(),
-    fetchHistory(10),
-  ]);
-
-  refreshLiveTab(diagnosis, history);
-
   if (activeTab === 'performance' && !metricsLoaded) loadMetrics();
 }
 
@@ -68,6 +59,7 @@ async function init() {
   renderModelPill(status);
 
   // Initial data load + recurring refresh
+  refreshLiveTab(null, null);
   await refresh();
   setInterval(refresh, REFRESH_MS);
 }
