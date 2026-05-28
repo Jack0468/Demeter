@@ -197,6 +197,8 @@ def generate_complete_diagnosis(
         merged["hybrid_prediction"] = all_predictions["hybrid_result"]
     if "hierarchical_svm_result" in all_predictions and all_predictions["hierarchical_svm_result"]:
         merged["hierarchical_svm_prediction"] = all_predictions["hierarchical_svm_result"]
+    if "hierarchical_cnn_result" in all_predictions and all_predictions["hierarchical_cnn_result"]:
+        merged["hierarchical_cnn_prediction"] = all_predictions["hierarchical_cnn_result"]
 
     if "visual_cluster" in all_predictions:
         merged["visual_cluster"] = all_predictions["visual_cluster"]
@@ -381,4 +383,56 @@ def predict_hybrid_hierarchical(img_path, identifier_components, species_svms_ca
         "primary_disease": detected_disease,
         "confidence": round(disease_conf, 4),
         "probabilities": {spec_comps["classes"][i]: float(probs_spec[i]) for i in range(len(spec_comps["classes"]))}
+    }
+
+# ==========================================
+# HIERARCHICAL CNN DISEASE CLASSIFICATION
+# ==========================================
+def predict_hierarchical_cnn(img_array, identifier_model, species_models, species_names, class_dirs):
+    """
+    Classifies plant disease using the multi-stage Hierarchical CNN pipeline.
+    
+    Returns:
+        Dict: primary species, species confidence, primary disease, disease confidence.
+    """
+    # 1. Primary Species Identification
+    probs_id = identifier_model.predict(img_array, verbose=0)[0]
+    pred_idx_id = np.argmax(probs_id)
+    detected_species = species_names[pred_idx_id]
+    species_conf = float(probs_id[pred_idx_id])
+    
+    # 2. Species-Specific Disease Prediction
+    species_key = detected_species.lower()
+    
+    probabilities = {cls: 0.0 for cls in class_dirs}
+    
+    if species_key not in species_models or species_models[species_key] is None:
+        return {
+            "primary_species": detected_species,
+            "species_confidence": round(species_conf, 4),
+            "primary_disease": "Unknown",
+            "confidence": 0.0,
+            "probabilities": probabilities,
+            "error": f"No specific CNN model found for {detected_species}"
+        }
+        
+    spec_model = species_models[species_key]
+    probs_spec = spec_model.predict(img_array, verbose=0)[0]
+    
+    # Map species-specific output back to the full class list
+    species_classes = sorted([d for d in class_dirs if d.startswith(detected_species)])
+    
+    pred_idx_spec = np.argmax(probs_spec)
+    detected_disease = species_classes[pred_idx_spec]
+    disease_conf = float(probs_spec[pred_idx_spec])
+    
+    for i, cls in enumerate(species_classes):
+        probabilities[cls] = float(probs_spec[i])
+        
+    return {
+        "primary_species": detected_species,
+        "species_confidence": round(species_conf, 4),
+        "primary_disease": detected_disease,
+        "confidence": round(disease_conf, 4),
+        "probabilities": probabilities
     }

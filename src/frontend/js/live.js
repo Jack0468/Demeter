@@ -23,12 +23,20 @@ export function initLiveTab() {
  */
 export function refreshLiveTab(diagnosis, history) {
   if (!diagnosis) {
-    showEmptyState();
+    hideEmptyState();
+    renderDiseaseCard(null);
+    renderHybridDiseaseCard(null);
+    renderHealthCard(null);
+    renderSensorReadouts(null);
+    renderHistoryTable(null);
+    renderLastUpdated(null);
+    renderMultiModels(null);
     return;
   }
   hideEmptyState();
 
-  renderDiseaseCard(diagnosis.cnn_result);
+  const cnn_pred = diagnosis.hierarchical_cnn_prediction || diagnosis.cnn_result;
+  renderDiseaseCard(cnn_pred);
   const svm_pred = diagnosis.hierarchical_svm_prediction || diagnosis.hybrid_prediction;
   renderHybridDiseaseCard(svm_pred);
   renderHealthCard(diagnosis);
@@ -40,7 +48,7 @@ export function refreshLiveTab(diagnosis, history) {
 
 function showEmptyState() {
   const grid = document.getElementById('live-grid');
-  if (grid) grid.style.opacity = '0.3';
+  if (grid) grid.style.opacity = '1';
 }
 
 function hideEmptyState() {

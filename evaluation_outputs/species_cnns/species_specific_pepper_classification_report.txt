@@ -1,0 +1,8 @@
+                               precision    recall  f1-score   support
+
+Pepper__bell___Bacterial_spot       0.99      0.97      0.98       997
+       Pepper__bell___healthy       0.98      0.99      0.99      1478
+
+                     accuracy                           0.99      2475
+                    macro avg       0.99      0.98      0.98      2475
+                 weighted avg       0.99      0.99      0.99      2475

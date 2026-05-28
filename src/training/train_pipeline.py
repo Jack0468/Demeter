@@ -174,7 +174,7 @@ def main():
         print("\n[!] PlantVillage Species Models not found or retrain forced. Training...")
         
         # 1. Train Primary Species Identifier
-        train_plantvillage_species_identifier(plantvillage_dir, plantvillage_species_identifier_model_path, epochs=config['training']['epochs'])
+        p(plantvillage_dir, plantvillage_species_identifier_model_path, epochs=config['training']['epochs'])
         
         # 2. Train Species-Specific Disease Models
         class_dirs = [d for d in os.listdir(plantvillage_dir) if os.path.isdir(os.path.join(plantvillage_dir, d))]

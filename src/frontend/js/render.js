@@ -36,11 +36,30 @@ export function renderDiseaseCard(cnn) {
   const confEl = document.getElementById('disease-conf');
   const barEl  = document.getElementById('disease-bar');
   const top3El = document.getElementById('top3-container');
+  const speciesEl = document.getElementById('cnn-species-name');
 
-  if (!cnn) return;
+  if (!cnn) {
+    if (nameEl) nameEl.textContent = '—';
+    if (confEl) confEl.textContent = '—';
+    if (speciesEl) speciesEl.textContent = '—';
+    if (barEl) {
+      barEl.style.width = '0%';
+      barEl.style.background = 'var(--muted)';
+    }
+    return;
+  }
 
   const disease = cnn.primary_disease || 'Unknown';
   const conf    = parseFloat(cnn.confidence) || 0;
+
+  if (speciesEl) {
+    if (cnn.primary_species) {
+      const spConf = parseFloat(cnn.species_confidence) || 0;
+      speciesEl.textContent = `Species: ${cnn.primary_species.replace(/_/g, ' ')} (${(spConf * 100).toFixed(0)}%)`;
+    } else {
+      speciesEl.textContent = 'Species: Unknown (Flat CNN fallback)';
+    }
+  }
 
   if (nameEl) nameEl.textContent = disease.replace(/_/g, ' ');
   if (confEl) confEl.textContent = `${(conf * 100).toFixed(0)}% confidence`;
@@ -49,8 +68,18 @@ export function renderDiseaseCard(cnn) {
     barEl.style.background = conf > 0.8 ? 'var(--green)' : conf > 0.5 ? 'var(--amber)' : 'var(--red)';
   }
 
-  if (top3El && Array.isArray(cnn.top_3)) {
-    top3El.innerHTML = cnn.top_3.slice(0, 3).map(p => {
+  if (top3El) {
+    let items = [];
+    if (cnn.probabilities) {
+      items = Object.entries(cnn.probabilities)
+        .map(([cls, p]) => ({ class: cls, confidence: parseFloat(p) }))
+        .sort((a, b) => b.confidence - a.confidence)
+        .slice(0, 3);
+    } else if (Array.isArray(cnn.top_3)) {
+      items = cnn.top_3.slice(0, 3);
+    }
+    
+    top3El.innerHTML = items.map(p => {
       const pct = ((p.confidence || p.probability || 0) * 100).toFixed(0);
       const label = (p.disease || p.class || p.label || '').replace(/_/g, ' ');
       return `<div class="pred-row">
