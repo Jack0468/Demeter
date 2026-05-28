@@ -53,6 +53,8 @@ _model_state = {
     "master_kmeans": None,
     "hybrid_svm_identifier": None,
     "hybrid_species_svms": {},
+    "cnn_identifier": None,
+    "cnn_species": {},
     "class_dirs": [],
     "error": None
 }
@@ -93,6 +95,16 @@ def _load_models():
         if os.path.exists(rf_water_path):
             _model_state["rf_water"] = joblib.load(rf_water_path)
             
+        # Load Hierarchical CNN components
+        cnn_identifier_path = str(PROJECT_ROOT / "models/demeter_cnn_plantvillage_species_identifier.keras")
+        if os.path.exists(cnn_identifier_path):
+            _model_state["cnn_identifier"] = tf.keras.models.load_model(cnn_identifier_path)
+            
+        for sp in ["tomato", "pepper", "potato"]:
+            sp_path = str(PROJECT_ROOT / f"models/demeter_cnn_plantvillage_{sp}.keras")
+            if os.path.exists(sp_path):
+                _model_state["cnn_species"][sp] = tf.keras.models.load_model(sp_path)
+                
         # Lazy-load Hybrid SVM components
         if os.path.exists(hybrid_svm_path):
             _model_state["hybrid_svm"] = joblib.load(hybrid_svm_path)
@@ -514,10 +526,15 @@ def predict():
         import tensorflow as tf
         from concurrent.futures import ThreadPoolExecutor
 
-        # Process image ONCE into a NumPy array
+        # Process image ONCE into a NumPy array (150x150 for legacy models)
         img = tf.keras.utils.load_img(image_path, target_size=(150, 150))
         img_array = tf.keras.utils.img_to_array(img)
         img_array = tf.expand_dims(img_array, 0)
+        
+        # Process image to 224x224 for new MobileNetV2 models
+        img_224 = tf.keras.utils.load_img(image_path, target_size=(224, 224))
+        img_array_224 = tf.keras.utils.img_to_array(img_224)
+        img_array_224 = tf.expand_dims(img_array_224, 0)
         
         env_data = {
             "Soil_Type": 1,
@@ -529,7 +546,20 @@ def predict():
         }
         # Setup parallel inference tasks
         with ThreadPoolExecutor() as executor:
-            future_disease = executor.submit(diagnose_plant_disease, img_array, image_path, _model_state["cnn"], _model_state["class_dirs"])
+            if _model_state["cnn_identifier"]:
+                from src.core.inference_engine import predict_hierarchical_cnn
+                species_names = sorted(list(set([d.split('_')[0] for d in _model_state["class_dirs"]])))
+                future_disease = executor.submit(
+                    predict_hierarchical_cnn, 
+                    img_array_224, 
+                    _model_state["cnn_identifier"], 
+                    _model_state["cnn_species"], 
+                    species_names, 
+                    _model_state["class_dirs"]
+                )
+            else:
+                future_disease = executor.submit(diagnose_plant_disease, img_array, image_path, _model_state["cnn"], _model_state["class_dirs"])
+            
             future_growth = executor.submit(predict_growth_milestone, env_data, _model_state["rf"])
             
             future_biomass = None
@@ -564,10 +594,22 @@ def predict():
                 )
             
             # Retrieve basic results first
-            disease = future_disease.result()
+            disease_raw = future_disease.result()
             growth = future_growth.result()
             
-            all_preds = disease.get("All_Predictions", {})
+            if "primary_disease" in disease_raw:
+                # Map hierarchical CNN format back to standard dictionary
+                disease = {
+                    "Detected_Disease": disease_raw["primary_disease"],
+                    "Disease_Confidence": disease_raw["confidence"],
+                    "All_Predictions": dict(disease_raw["probabilities"])
+                }
+                all_preds = disease.get("All_Predictions", {})
+                all_preds["hierarchical_cnn_result"] = disease_raw
+            else:
+                disease = disease_raw
+                all_preds = disease.get("All_Predictions", {})
+                
             pv_conf = disease.get("Disease_Confidence", 0.0)
             rf_growth = growth.get("Predicted_Growth_Milestone", 0.0)
             

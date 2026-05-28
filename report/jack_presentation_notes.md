@@ -46,6 +46,7 @@ sequenceDiagram
     *   **Color (HSV):** Appended a 64-bin HSV color histogram, because FFT alone cannot detect pigmentation-based diseases (like yellowing).
     *   **Dimensionality Reduction (PCA):** PCA was implemented to retain only the top 100 frequency components, massively reducing memory overhead.
 
+
 ## 3. ML Methods & Benchmarking
 **Visual Asset to show:** The `latency_comparison.png` bar chart and the standardized metrics table.
 
