@@ -3,6 +3,9 @@ import json
 import pickle
 import pandas as pd
 import sys
+# Force UTF-8 output to prevent Windows console encoding errors
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8')
 from pathlib import Path
 
 '''
@@ -23,11 +26,11 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 try:
-    from src.training.vision_models import train_and_save_cnn_plantvillage, train_tiller_cnn_regressor, train_biomass_cnn_regressor
+    from src.training.vision_models import train_and_save_cnn_plantvillage, train_tiller_cnn_regressor, train_biomass_cnn_regressor, train_plantvillage_species_specific_disease_model, train_plantvillage_species_identifier
     from src.training.tabular_models import train_and_save_rf, train_and_save_rf_danforth
     from src.training.train_kmeans_cluster import train_health_clusters
 except ModuleNotFoundError:
-    from vision_models import train_and_save_cnn_plantvillage, train_tiller_cnn_regressor, train_biomass_cnn_regressor
+    from vision_models import train_and_save_cnn_plantvillage, train_tiller_cnn_regressor, train_biomass_cnn_regressor, train_plantvillage_species_specific_disease_model, train_plantvillage_species_identifier
     from tabular_models import train_and_save_rf, train_and_save_rf_danforth
     from train_kmeans_cluster import train_health_clusters
 
@@ -59,6 +62,7 @@ TRAIN_MODEL = config['training'].get('force_retrain', False)  # Legacy support
 
 # New granular model retraining flags
 train_plantvillage_cnn = config['training']['models'].get('plantvillage_cnn', False)
+train_plantvillage_species_cnns = config['training']['models'].get('plantvillage_species_cnns', False)
 train_danforth_rf = config['training']['models'].get('danforth_rf', False)
 train_bellwether_cnn = config['training']['models'].get('bellwether_cnn', False)
 train_bellwether_rf = config['training']['models'].get('bellwether_rf', False)
@@ -75,6 +79,7 @@ metadata_cache_path = str(PROJECT_ROOT / "data/metadata_cache.pkl")
 plantvillage_dir = str(PROJECT_ROOT / config['paths']['plantvillage_dir'])
 danforth_csv_path = str(PROJECT_ROOT / config['paths']['danforth_csv_path'])
 plantvillage_cnn_model_path = str(PROJECT_ROOT / config['paths']['plantvillage_cnn_model_path'])
+plantvillage_species_identifier_model_path = str(PROJECT_ROOT / config['paths'].get('plantvillage_species_identifier_model_path', 'models/demeter_cnn_plantvillage_species_identifier.keras'))
 danforth_rf_model_path = str(PROJECT_ROOT / config['paths']['danforth_rf_model_path'])
 
 tiller_txt_path = str(PROJECT_ROOT / config['paths'].get('tiller_data_path', ''))
@@ -164,6 +169,28 @@ def main():
         print("\n[!] PlantVillage CNN not found or retrain forced. Training...")
         train_and_save_cnn_plantvillage(plantvillage_dir, plantvillage_cnn_model_path, epochs=config['training']['epochs'])
         print("[!] PlantVillage CNN training complete.\n")
+        
+    if train_plantvillage_species_cnns or not os.path.exists(plantvillage_species_identifier_model_path):
+        print("\n[!] PlantVillage Species Models not found or retrain forced. Training...")
+        
+        # 1. Train Primary Species Identifier
+        train_plantvillage_species_identifier(plantvillage_dir, plantvillage_species_identifier_model_path, epochs=config['training']['epochs'])
+        
+        # 2. Train Species-Specific Disease Models
+        class_dirs = [d for d in os.listdir(plantvillage_dir) if os.path.isdir(os.path.join(plantvillage_dir, d))]
+        species_names = set([d.split('_')[0] for d in class_dirs])
+        
+        for species_name in sorted(list(species_names)):
+            save_path = str(PROJECT_ROOT / f"models/demeter_cnn_plantvillage_{species_name.lower()}.keras")
+            if not os.path.exists(save_path) or train_plantvillage_species_cnns:
+                train_plantvillage_species_specific_disease_model(
+                    plantvillage_dir, 
+                    save_path, 
+                    species_name, 
+                    epochs=config['training']['epochs']
+                )
+        
+        print("[!] PlantVillage Species-Specific Models training complete.\n")
     
     if not os.path.exists(danforth_rf_model_path) or train_danforth_rf:
         print("\n[!] Danforth RF not found or retrain forced. Training...")

@@ -127,7 +127,8 @@ class OutputFormatter:
         self,
         disease_result: Dict[str, Any],
         growth_result: Dict[str, Any],
-        sensor_data: Dict[str, Any]
+        sensor_data: Dict[str, Any],
+        stress_diagnosis: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Merge all diagnosis components into unified result.
@@ -136,6 +137,7 @@ class OutputFormatter:
             disease_result: Output from format_disease_detection()
             growth_result: Output from format_growth_prediction()
             sensor_data: Output from format_sensor_data()
+            stress_diagnosis: Output from status engine (optional)
             
         Returns:
             Complete diagnosis record
@@ -146,6 +148,14 @@ class OutputFormatter:
             "sensors": sensor_data
         }
         
+        if stress_diagnosis is not None:
+            merged["stress_diagnosis"] = stress_diagnosis
+        else:
+            merged["stress_diagnosis"] = {
+                "moisture_stress": "Normal",
+                "temperature_stress": "Normal"
+            }
+            
         return merged
     
     def save_latest(self, diagnosis: Dict[str, Any]) -> str:

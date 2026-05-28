@@ -66,10 +66,12 @@ export function renderHybridDiseaseCard(hybrid) {
   const nameEl = document.getElementById('hybrid-disease-name');
   const confEl = document.getElementById('hybrid-disease-conf');
   const barEl  = document.getElementById('hybrid-disease-bar');
+  const speciesEl = document.getElementById('hybrid-species-name');
 
   if (!hybrid) {
     if (nameEl) nameEl.textContent = '—';
     if (confEl) confEl.textContent = '—';
+    if (speciesEl) speciesEl.textContent = '—';
     if (barEl) {
       barEl.style.width = '0%';
       barEl.style.background = 'var(--muted)';
@@ -79,6 +81,15 @@ export function renderHybridDiseaseCard(hybrid) {
 
   const disease = hybrid.primary_disease || 'Unknown';
   const conf    = parseFloat(hybrid.confidence) || 0;
+  
+  if (speciesEl) {
+    if (hybrid.primary_species) {
+      const spConf = parseFloat(hybrid.species_confidence) || 0;
+      speciesEl.textContent = `Species: ${hybrid.primary_species.replace(/_/g, ' ')} (${(spConf * 100).toFixed(0)}%)`;
+    } else {
+      speciesEl.textContent = 'Species: Unknown (Flat SVM fallback)';
+    }
+  }
 
   if (nameEl) nameEl.textContent = disease.replace(/_/g, ' ');
   if (confEl) confEl.textContent = `${(conf * 100).toFixed(0)}% confidence`;

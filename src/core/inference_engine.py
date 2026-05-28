@@ -33,8 +33,10 @@ PROJECT_ROOT = _current_dir if _current_dir.name == "Demeter" else _current_dir.
 # Import our new modules
 try:
     from src.core.output_formatter import OutputFormatter
+    from src.core.svm_preprocessor import SVMPreprocessor
 except ImportError:
     from output_formatter import OutputFormatter
+    from svm_preprocessor import SVMPreprocessor
 
 def load_models(cnn_path, rf_path):
     """Loads both the pre-trained CNN and Random Forest models."""
@@ -193,6 +195,8 @@ def generate_complete_diagnosis(
         merged["bellwether_water_stress"] = all_predictions["bellwether_result"]
     if "hybrid_result" in all_predictions and all_predictions["hybrid_result"]:
         merged["hybrid_prediction"] = all_predictions["hybrid_result"]
+    if "hierarchical_svm_result" in all_predictions and all_predictions["hierarchical_svm_result"]:
+        merged["hierarchical_svm_prediction"] = all_predictions["hierarchical_svm_result"]
 
     if "visual_cluster" in all_predictions:
         merged["visual_cluster"] = all_predictions["visual_cluster"]
@@ -299,35 +303,8 @@ def log_to_csv(data_dict, filepath="data/logs/inference_logs.csv"):
 # ==========================================
 def extract_hybrid_fft_features(img_path):
     """Isolate the leaf, extract raw Grayscale FFT magnitude and HSV Color Histogram."""
-    import cv2
-    img_bgr = cv2.imread(str(img_path))
-    if img_bgr is None:
-        raise ValueError(f"Could not load {img_path}")
-    
-    IMG_SIZE = 64
-    img_bgr = cv2.resize(img_bgr, (IMG_SIZE, IMG_SIZE))
-    
-    # Otsu thresholding
-    gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gray, (5, 5), 0)
-    _, mask = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-    kernel = np.ones((3,3), np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-    
-    # 2D FFT Magnitude Spectrum
-    fft_gray = np.fft.fft2(gray)
-    mag_gray = 20 * np.log(np.abs(np.fft.fftshift(fft_gray)) + 1).flatten()
-    
-    # HSV Histogram on isolated leaf region
-    hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
-    h_hist = cv2.calcHist([hsv], [0], mask, [32], [0, 180]).flatten()
-    s_hist = cv2.calcHist([hsv], [1], mask, [32], [0, 256]).flatten()
-    h_hist /= h_hist.sum() + 1e-6
-    s_hist /= s_hist.sum() + 1e-6
-    color_hist = np.concatenate([h_hist, s_hist])
-    
-    return mag_gray, color_hist
+    preprocessor = SVMPreprocessor()
+    return preprocessor.extract_features(img_path)
 
 def predict_hybrid_disease(img_path, scaler_fft, scaler_hist, pca_fft, svm, class_names):
     """
@@ -336,12 +313,8 @@ def predict_hybrid_disease(img_path, scaler_fft, scaler_hist, pca_fft, svm, clas
     Returns:
         Dict: predicted disease name, confidence score, and all probability scores.
     """
-    mag_gray, color_hist = extract_hybrid_fft_features(img_path)
-    
-    X_fft_scaled = scaler_fft.transform([mag_gray])
-    X_fft_pca = pca_fft.transform(X_fft_scaled)
-    X_hist_scaled = scaler_hist.transform([color_hist])
-    X_hybrid = np.hstack([X_fft_pca, X_hist_scaled])
+    preprocessor = SVMPreprocessor()
+    X_hybrid = preprocessor.preprocess_for_inference(img_path, scaler_fft, scaler_hist, pca_fft)
     
     # Predict probability
     probs = svm.predict_proba(X_hybrid)[0]
@@ -353,4 +326,59 @@ def predict_hybrid_disease(img_path, scaler_fft, scaler_hist, pca_fft, svm, clas
         "primary_disease": detected_disease,
         "confidence": round(confidence, 4),
         "probabilities": {class_names[i]: float(probs[i]) for i in range(len(class_names))}
+    }
+
+def predict_hybrid_hierarchical(img_path, identifier_components, species_svms_cache):
+    """
+    Classifies plant disease using the multi-stage Hierarchical Hybrid SVM pipeline.
+    
+    Returns:
+        Dict: primary species, species confidence, primary disease, disease confidence.
+    """
+    preprocessor = SVMPreprocessor()
+    
+    # 1. Primary Species Identification
+    X_id = preprocessor.preprocess_for_inference(
+        img_path, 
+        identifier_components["fft_scaler"], 
+        identifier_components["hist_scaler"], 
+        identifier_components["fft_pca"]
+    )
+    
+    probs_id = identifier_components["svm"].predict_proba(X_id)[0]
+    pred_idx_id = np.argmax(probs_id)
+    detected_species = identifier_components["classes"][pred_idx_id]
+    species_conf = float(probs_id[pred_idx_id])
+    
+    # 2. Species-Specific Disease Prediction
+    species_key = detected_species.lower()
+    if species_key not in species_svms_cache:
+        # Fallback if no specific model exists
+        return {
+            "primary_species": detected_species,
+            "species_confidence": round(species_conf, 4),
+            "primary_disease": "Unknown",
+            "confidence": 0.0,
+            "error": f"No specific SVM model found for {detected_species}"
+        }
+        
+    spec_comps = species_svms_cache[species_key]
+    X_spec = preprocessor.preprocess_for_inference(
+        img_path, 
+        spec_comps["fft_scaler"], 
+        spec_comps["hist_scaler"], 
+        spec_comps["fft_pca"]
+    )
+    
+    probs_spec = spec_comps["svm"].predict_proba(X_spec)[0]
+    pred_idx_spec = np.argmax(probs_spec)
+    detected_disease = spec_comps["classes"][pred_idx_spec]
+    disease_conf = float(probs_spec[pred_idx_spec])
+    
+    return {
+        "primary_species": detected_species,
+        "species_confidence": round(species_conf, 4),
+        "primary_disease": detected_disease,
+        "confidence": round(disease_conf, 4),
+        "probabilities": {spec_comps["classes"][i]: float(probs_spec[i]) for i in range(len(spec_comps["classes"]))}
     }
