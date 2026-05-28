@@ -51,12 +51,13 @@ graph TD
 * **Dataset:** PlantVillage Dataset (~54,000 images, 15 target classes).
 * **Role:** High-accuracy discrete leaf-level disease classification.
 
-### 2. Signal Spectra Stream (Hybrid SVM)
-* **Model:** SVC (Support Vector Classifier) with RBF kernel.
+### 2. Signal Spectra Stream (Hierarchical Hybrid SVM)
+* **Model:** Two-stage Hierarchical SVC (Support Vector Classifier) with RBF kernel.
 * **Preprocessing Pipeline:**
   * **Otsu Segmentation:** Leaf region is isolated from background clutter.
   * **2D Fast Fourier Transform (FFT):** Magnitude spectrum is flattened, normalized, and reduced to the 100 most important frequency components via PCA.
   * **HSV Color Mapping:** A 64-bin color histogram maps pigment distribution.
+* **Hierarchical Routing:** A primary SVM categorizes the broad species (e.g., Potato, Tomato, Pepper) and routes the extracted features to a secondary, species-specific SVM to diagnose the exact pathogen.
 * **Role:** Ultra-lightweight, low-latency diagnostic model viable for edge/low-power hardware.
 
 ### 3. Growth Stream (Random Forest)
@@ -79,7 +80,10 @@ Demeter/
 │   ├── outputs/            # Latest JSON diagnoses and rolling history caches
 │   └── logs/               # Inference logs for runtime validation
 ├── models/                 # Model binaries (Git ignored)
-│   ├── demeter_cnn.keras   # Primary deep learning CNN model
+│   ├── demeter_cnn.keras   # Legacy deep learning CNN model
+│   ├── demeter_cnn_plantvillage.keras   # Primary deep learning CNN model (All Species)
+│   ├── demeter_cnn_plantvillage_species_identifier.keras # Identifies plant species (Potato, Tomato, etc.)
+│   ├── demeter_cnn_plantvillage_potato.keras # Species-specific disease classifier
 │   ├── demeter_rf.joblib   # Growth prediction Random Forest
 │   └── experimentation/    # Trained SVM, Scaler, and PCA assets for FFT pipelines
 ├── src/                    # Core codebase
@@ -113,7 +117,8 @@ To isolate leaf texture from background noise, multiple image transform strategi
 | 🩹 **Inpainted FFT (Seamless Pad)** | 29.60% | 27.01% | Seamless texture padding successfully minimizes edge spikes. |
 | 🎨 **Multichannel LAB FFT** | 48.00% | 47.05% | Frequency spectra mapped across color channels improves classification. |
 | 🧬 **Hybrid FFT + HSV (Small Set)** | 48.00% | 46.27% | Combining frequency texture with color histograms boosts performance. |
-| 👑 **Production Hybrid FFT + HSV** | **84.53%** | **84.28%** | **Best Performance:** Resolves spot/wilt symptoms on full scale. |
+| 👑 **Production Hybrid FFT + HSV (Monolithic)** | 76.09% | 72.94% | Combines texture frequency and color distributions on full scale. |
+| 🚀 **Hierarchical Hybrid SVM (Species-Specific)** | **86.69%** 🏆 | - | **Best Performance:** Eliminates cross-species interference via 2-stage routing. |
 
 ### 2. Secondary Models Performance
 * **Danforth Growth Random Forest (RF Regressor):**

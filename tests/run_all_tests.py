@@ -12,8 +12,11 @@ import json
 from datetime import datetime
 from io import StringIO
 
-# Add tests directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'tests'))
+# Add tests directory and src directories to path
+base_dir = os.path.dirname(os.path.dirname(__file__))
+sys.path.insert(0, os.path.join(base_dir, 'tests'))
+sys.path.insert(0, os.path.join(base_dir, 'src', 'core'))
+sys.path.insert(0, base_dir)
 
 
 def run_unit_tests():
@@ -80,6 +83,7 @@ def run_model_evaluation():
         evaluator.check_model_availability()
         evaluator.evaluate_cnn_plantvillage()
         evaluator.evaluate_rf_danforth()
+        evaluator.evaluate_hybrid_svms()
         evaluator.evaluate_data_availability()
         evaluator.evaluate_inference_engine()
         evaluator.evaluate_output_formatter()
@@ -152,6 +156,15 @@ def generate_final_report(test_results, eval_results):
             print(f"    Trees: {rf.get('n_trees')}")
         else:
             print(f"\n  RF Danforth: ✗ {rf.get('status')}")
+            
+    if 'hybrid_svms' in eval_results:
+        svm = eval_results['hybrid_svms']
+        if svm.get('status') == 'loaded':
+            print(f"\n  Hybrid SVMs: ✓ LOADED")
+            print(f"    Full Model Type: {svm.get('type_full')}")
+            print(f"    Identifier Classes: {svm.get('classes_ident')}")
+        else:
+            print(f"\n  Hybrid SVMs: ✗ {svm.get('status')}")
     
     # Module status
     print("\n🔧 MODULE STATUS:")

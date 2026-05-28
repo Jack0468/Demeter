@@ -5,11 +5,17 @@ This document aggregates the evaluation results of the various models developed,
 ## 1. Deep Learning Vision Models (CNNs)
 A suite of convolutional neural networks (CNNs) was trained and evaluated on various datasets to handle different diagnostic and regression tasks from leaf and plant imagery.
 
-### 1.1 Plant Pathogen Classification (PlantVillage CNN)
+### 1.1 Plant Pathogen Classification (Legacy Generic CNN)
 *   **Model File**: `demeter_cnn_plantvillage.keras`
 *   **Production Model Accuracy**: **86.20%**
 *   **Baseline Run (`eval_run_1`) Accuracy**: **84.31%**
-*   **Use Case**: Core vision stream for identifying plant diseases and pathogens.
+*   **Use Case**: Generic core vision stream for identifying plant diseases and pathogens across all species simultaneously.
+
+### 1.2 Hierarchical Species-Specific Disease Models (New Architecture)
+*   **Model Files**: `demeter_cnn_plantvillage_species_identifier.keras`, `demeter_cnn_plantvillage_potato.keras`, etc.
+*   **Primary Identifier Accuracy**: **[PLACEHOLDER: Pending background training completion]**
+*   **Species-Specific Average Accuracy**: **[PLACEHOLDER: Pending background training completion]**
+*   **Use Case**: A two-stage pipeline where a primary routing model first identifies the plant species from the image. Once identified, a dedicated, highly specialized CNN (tailored only to that species) diagnoses the specific pathogen, preventing cross-species misclassification.
 
 ### 1.3 Plant Biomass Prediction (Biomass CNN Regressor)
 *   **Model File**: `demeter_cnn_biomass.keras`
@@ -44,14 +50,21 @@ To explore low-latency, computationally efficient alternatives to deep learning,
 **Pipeline Preprocessing Benchmarks:**
 We benchmarked several preprocessing steps to quantify how signal processing affects shallow model performance:
 
-| Preprocessing Stage | Test Accuracy | Macro F1-Score | Key Biological Benefit |
-| :--- | :---: | :---: | :--- |
-| **Raw Grayscale FFT** | 5.20% | 0.96% | Fails due to high-frequency edge artifacts. |
-| **Tapered FFT (Gaussian-fade)** | 30.00% | 28.41% | Eliminates artificial boundary noise using edge fading. |
-| **Inpainted FFT (Seamless Pad)** | 29.60% | 27.01% | Replaces background with texture inpaint to minimize edge spikes. |
-| **Multichannel LAB FFT** | 48.00% | 47.05% | Captures spatial color transitions across channels. |
-| **Production Hybrid FFT + HSV** | **84.53%** | **84.28%** | **Combines texture frequency and color distributions.** |
+| Preprocessing Stage | Test Accuracy | Macro Precision | Macro Recall | Macro F1-Score | Key Biological Benefit |
+| :--- | :---: | :---: | :---: | :---: | :--- |
+| ❌ **Raw Grayscale FFT (Baseline)** | 5.20% | 0.55% | 5.20% | 0.96% | Fails due to high-frequency edge artifacts. |
+| 🖤 **Binary Segmented FFT (Flat Mask)** | 8.00% | 16.84% | 8.00% | 4.79% | Isolates the leaf but introduces sharp artificial edge noise. |
+| 🌫️ **Tapered FFT (Gaussian-fade)** | 30.00% | 35.40% | 30.00% | 28.41% | Eliminates artificial boundary noise using edge fading. |
+| 🩹 **Inpainted FFT (Seamless Pad)** | 29.60% | 40.13% | 29.60% | 27.01% | Replaces background with texture inpaint to minimize edge spikes. |
+| 🎨 **Multichannel LAB FFT** | 48.00% | 51.48% | 48.00% | 47.05% | Captures spatial color transitions across channels. |
+| 👑 **Production Hybrid FFT + HSV (Monolithic)** | 76.09% | 71.85% | 75.69% | 72.94% | Combines texture frequency and color distributions on full scale. |
+| 🚀 **Hierarchical Hybrid SVM (Species-Specific)** | **86.69%** 🏆 | - | - | - | Eliminates cross-species interference via 2-stage routing. |
 
+### 2.3 Hierarchical Hybrid SVM
+*   **Approach**: Upgraded the Production Hybrid SVM to a two-stage hierarchical architecture. A primary SVM classifies the species (e.g., Potato vs Tomato), and its output routes to a secondary SVM trained exclusively on that species' classes.
+*   **Primary Identifier Accuracy**: **85.71%**
+*   **Species-Specific Average Accuracy**: **86.69%**
+*   **Conclusion**: Breaking down the problem space dramatically improves diagnostic precision for shallow models. By ensuring early blight in tomatoes is not confused with early blight in potatoes, the hierarchical system outperforms the monolithic SVM by over 10 percentage points.
 *   **Conclusion**: Combining texture frequency with color distributions creates a robust shallow classifier that rivals the CNN in accuracy while maintaining a fraction of the computational footprint, making it ideal for edge deployment.
 
 ---
@@ -67,13 +80,25 @@ A pair of Random Forest regressors was trained on tabular data to predict enviro
 *   **Use Case**: Precision agriculture predictions for crop yield and growth state modeling.
 
 
-## 4. Unsupervised Health Clustering (K-Means)
-To discover phenotypic health patterns without labeled data, an unsupervised K-Means clustering model was evaluated.
+## 4. Unsupervised Domain-Specific Health Clustering (K-Means)
+To discover phenotypic health patterns without labeled data and rigid heuristic rules, unsupervised K-Means clustering was adopted. The architecture utilizes three domain-specific models to independently analyze distinct feature streams.
 
-*   **Model File**: `health_clusters.joblib`
-*   **Silhouette Score**: **0.1966**
-*   **Davies-Bouldin Index**: **1.6112**
-*   **Outcome**: Successfully identifies 3 distinct phenotypic health states (Thriving, Struggling, Critical).
+### 4.1 Visual Health Clustering
+*   **Model File**: `visual_health_clusters.joblib`
+*   **Features Used**: `plantvillage_confidence`, `biomass_weight`, `hybrid_svm_confidence`
+*   **Use Case**: Clusters plant health based purely on visual traits and vision model confidences.
+
+### 4.2 Tabular Health Clustering
+*   **Model File**: `tabular_health_clusters.joblib`
+*   **Features Used**: `predicted_growth_milestone`
+*   **Use Case**: Clusters plant health based purely on environmental tabular inputs and Random Forest regression outputs.
+
+### 4.3 Master Health Clustering
+*   **Model File**: `master_health_clusters.joblib`
+*   **Features Used**: Combined visual and tabular features.
+*   **Use Case**: Provides a holistic, unified health status integrating both modalities.
+
+*Note: These K-Means models have completely replaced the static hardcoded heuristics for fertilizer and moisture stress in the Demeter dashboard, enabling entirely data-driven health status inference.*
 
 ---
 

@@ -10,7 +10,9 @@ This document serves as the master record for all machine learning models active
 | `demeter_cnn_tiller.keras` | Convolutional Neural Network (CNN) | Vision | Continuous prediction of tiller counts. | Manual Tiller Data |
 | `demeter_cnn.keras` | Convolutional Neural Network (CNN) | Vision | Bellwether water stress classification (Water_Stressed vs Well_Watered). | Bellwether Dataset |
 | `demeter_rf.joblib` | Random Forest Regressor | Tabular | Bellwether biomass/tiller fallback predictions based on snapshot physical area. | Bellwether Dataset |
-| `hybrid_full_svm.joblib` | SVM Classifier | Vision (Signal) | Secondary disease verification using Fast Fourier Transform (FFT) preprocessing on biological signals. | PlantVillage |
+| `hybrid_full_svm.joblib` | SVM Classifier | Vision (Signal) | Monolithic disease verification using Fast Fourier Transform (FFT) + HSV. | PlantVillage |
+| `hybrid_svm_species_identifier.joblib` | SVM Classifier | Vision (Signal) | Primary routing model that identifies broad plant species before sub-model dispatch. | PlantVillage |
+| `hybrid_svm_[species].joblib` | SVM Classifier | Vision (Signal) | Species-specific models (e.g. Tomato, Potato) diagnosing the exact pathogen. | PlantVillage |
 | `visual_health_clusters.joblib` | K-Means | Unsupervised | Clusters plants into unsupervised health groups (0, 1, 2) based on visual outputs (Disease Confidence, Biomass, SVM Confidence). | Bootstrapped Test Sets |
 | `tabular_health_clusters.joblib` | K-Means | Unsupervised | Clusters plants based purely on tabular RF growth predictions. | Bootstrapped Test Sets |
 | `master_health_clusters.joblib` | K-Means | Unsupervised | Holistic health clustering merging both Visual and Tabular feature outputs. | Bootstrapped Test Sets |

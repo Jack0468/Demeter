@@ -18,7 +18,9 @@ if str(PROJECT_ROOT) not in sys.path:
 
 DATA_DIR = PROJECT_ROOT / "data/raw/vision/PlantVillage"
 MODELS_DIR = PROJECT_ROOT / "models/experimentation"
+SPECIES_MODELS_DIR = MODELS_DIR / "species_svms"
 os.makedirs(MODELS_DIR, exist_ok=True)
+os.makedirs(SPECIES_MODELS_DIR, exist_ok=True)
 
 SAMPLES_PER_CLASS = 70  # 50 train + 20 test
 IMG_SIZE = 64
@@ -185,6 +187,101 @@ def evaluate_hybrid(X_fft, X_hist, y, classes):
     
     return acc
 
+def evaluate_hybrid_species_identifier(X_fft, X_hist, y, classes):
+    print("\n--- Evaluating Hybrid Species Identifier ---")
+    
+    # Map labels to species
+    y_species = np.array([label.split('_')[0] for label in y])
+    unique_species = sorted(list(set(y_species)))
+    
+    X_train_fft, X_test_fft, X_train_hist, X_test_hist, y_train, y_test = train_test_split(
+        X_fft, X_hist, y_species, test_size=0.28, stratify=y_species, random_state=42
+    )
+    
+    scaler_fft = StandardScaler()
+    X_train_fft_scaled = scaler_fft.fit_transform(X_train_fft)
+    X_test_fft_scaled = scaler_fft.transform(X_test_fft)
+    
+    scaler_hist = StandardScaler()
+    X_train_hist_scaled = scaler_hist.fit_transform(X_train_hist)
+    X_test_hist_scaled = scaler_hist.transform(X_test_hist)
+    
+    pca_fft = PCA(n_components=100, random_state=42)
+    X_train_fft_pca = pca_fft.fit_transform(X_train_fft_scaled)
+    X_test_fft_pca = pca_fft.transform(X_test_fft_scaled)
+    
+    X_train_hybrid = np.hstack([X_train_fft_pca, X_train_hist_scaled])
+    X_test_hybrid = np.hstack([X_test_fft_pca, X_test_hist_scaled])
+    
+    svm = SVC(kernel='rbf', class_weight='balanced', probability=True, random_state=42)
+    svm.fit(X_train_hybrid, y_train)
+    
+    y_pred = svm.predict(X_test_hybrid)
+    acc = accuracy_score(y_test, y_pred)
+    print(f"Species Identifier Accuracy: {acc:.2%}")
+    
+    joblib.dump(scaler_fft, MODELS_DIR / "hybrid_svm_species_identifier_fft_scaler.joblib")
+    joblib.dump(scaler_hist, MODELS_DIR / "hybrid_svm_species_identifier_hist_scaler.joblib")
+    joblib.dump(pca_fft, MODELS_DIR / "hybrid_svm_species_identifier_fft_pca.joblib")
+    joblib.dump(svm, MODELS_DIR / "hybrid_svm_species_identifier.joblib")
+    joblib.dump(unique_species, MODELS_DIR / "hybrid_svm_species_identifier_classes.joblib")
+    
+    return acc
+
+def evaluate_hybrid_species_specific(X_fft, X_hist, y, target_species):
+    print(f"\n--- Evaluating Hybrid Species-Specific Model ({target_species}) ---")
+    
+    # Filter for target species
+    indices = [i for i, label in enumerate(y) if label.startswith(target_species)]
+    
+    if len(indices) == 0:
+        print(f"No samples found for {target_species}.")
+        return 0.0
+        
+    X_fft_sub = X_fft[indices]
+    X_hist_sub = X_hist[indices]
+    y_sub = y[indices]
+    classes_sub = sorted(list(set(y_sub)))
+    
+    if len(classes_sub) <= 1:
+        print(f"Only 1 class found for {target_species}. Skipping SVM training.")
+        return 1.0
+    
+    X_train_fft, X_test_fft, X_train_hist, X_test_hist, y_train, y_test = train_test_split(
+        X_fft_sub, X_hist_sub, y_sub, test_size=0.28, stratify=y_sub, random_state=42
+    )
+    
+    scaler_fft = StandardScaler()
+    X_train_fft_scaled = scaler_fft.fit_transform(X_train_fft)
+    X_test_fft_scaled = scaler_fft.transform(X_test_fft)
+    
+    scaler_hist = StandardScaler()
+    X_train_hist_scaled = scaler_hist.fit_transform(X_train_hist)
+    X_test_hist_scaled = scaler_hist.transform(X_test_hist)
+    
+    pca_fft = PCA(n_components=100, random_state=42)
+    X_train_fft_pca = pca_fft.fit_transform(X_train_fft_scaled)
+    X_test_fft_pca = pca_fft.transform(X_test_fft_scaled)
+    
+    X_train_hybrid = np.hstack([X_train_fft_pca, X_train_hist_scaled])
+    X_test_hybrid = np.hstack([X_test_fft_pca, X_test_hist_scaled])
+    
+    svm = SVC(kernel='rbf', class_weight='balanced', probability=True, random_state=42)
+    svm.fit(X_train_hybrid, y_train)
+    
+    y_pred = svm.predict(X_test_hybrid)
+    acc = accuracy_score(y_test, y_pred)
+    print(f"{target_species} SVM Accuracy: {acc:.2%}")
+    
+    prefix = target_species.lower()
+    joblib.dump(scaler_fft, SPECIES_MODELS_DIR / f"hybrid_svm_{prefix}_fft_scaler.joblib")
+    joblib.dump(scaler_hist, SPECIES_MODELS_DIR / f"hybrid_svm_{prefix}_hist_scaler.joblib")
+    joblib.dump(pca_fft, SPECIES_MODELS_DIR / f"hybrid_svm_{prefix}_fft_pca.joblib")
+    joblib.dump(svm, SPECIES_MODELS_DIR / f"hybrid_svm_{prefix}.joblib")
+    joblib.dump(classes_sub, SPECIES_MODELS_DIR / f"hybrid_svm_{prefix}_classes.joblib")
+    
+    return acc
+
 def main():
     print("--- Demeter Color Frequency SVM Experiment ---")
     
@@ -195,6 +292,16 @@ def main():
     acc_multichannel = evaluate_pipeline(X_lab_fft, y, classes, "Multichannel LAB FFT")
     acc_hybrid = evaluate_hybrid(X_gray_fft, X_color_hist, y, classes)
     
+    # Run Hierarchical pipelines
+    acc_species_id = evaluate_hybrid_species_identifier(X_gray_fft, X_color_hist, y, classes)
+    
+    species_names = sorted(list(set([c.split('_')[0] for c in classes])))
+    species_accs = {}
+    for s in species_names:
+        species_accs[s] = evaluate_hybrid_species_specific(X_gray_fft, X_color_hist, y, s)
+    
+    avg_species_acc = np.mean(list(species_accs.values()))
+
     print("\n=================================")
     print("      FINAL COMPARISONS")
     print("=================================")
@@ -205,6 +312,9 @@ def main():
     print("\nColor Spectra Pipelines:")
     print(f" - Multichannel LAB FFT:       {acc_multichannel:.2%}")
     print(f" - Hybrid (Grayscale FFT+Hist): {acc_hybrid:.2%}")
+    print("\nHierarchical Hybrid Pipeline:")
+    print(f" - Primary Species Identifier:  {acc_species_id:.2%}")
+    print(f" - Species-Specific Average:    {avg_species_acc:.2%}")
     print("=================================")
 
 if __name__ == "__main__":

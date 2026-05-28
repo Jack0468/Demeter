@@ -30,7 +30,9 @@ class ModelEvaluator:
             "demeter_cnn_tiller.keras",
             "demeter_cnn.keras",
             "demeter_rf.joblib",
-            "health_clusters.joblib"
+            "health_clusters.joblib",
+            "experimentation/hybrid_full_svm.joblib",
+            "experimentation/hybrid_svm_species_identifier.joblib"
         ]
         
         for model_name in required_models:
@@ -86,6 +88,32 @@ class ModelEvaluator:
             }
         except Exception as e:
             self.results["rf_danforth"] = {
+                "status": "error",
+                "error": str(e)
+            }
+
+    def evaluate_hybrid_svms(self):
+        svm_full_path = self.models_dir / "experimentation" / "hybrid_full_svm.joblib"
+        svm_ident_path = self.models_dir / "experimentation" / "hybrid_svm_species_identifier.joblib"
+        
+        if not svm_full_path.is_file() or not svm_ident_path.is_file():
+            self.results["hybrid_svms"] = {
+                "status": "missing",
+                "error": "One or more Hybrid SVM model files not found."
+            }
+            return
+            
+        try:
+            model_full = joblib.load(str(svm_full_path))
+            model_ident = joblib.load(str(svm_ident_path))
+            self.results["hybrid_svms"] = {
+                "status": "loaded",
+                "type_full": type(model_full).__name__,
+                "type_ident": type(model_ident).__name__,
+                "classes_ident": len(model_ident.classes_) if hasattr(model_ident, "classes_") else 0
+            }
+        except Exception as e:
+            self.results["hybrid_svms"] = {
                 "status": "error",
                 "error": str(e)
             }

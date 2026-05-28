@@ -31,7 +31,7 @@ def get_augmenter(img_height, img_width):
 # ==========================================
 # 2. CNN TRAINING PIPELINE - PLANTVILLAGE DISEASE CLASSIFICATION
 # ==========================================
-def train_and_save_cnn_plantvillage(plantvillage_dir, save_path, img_height=150, img_width=150, epochs=5):
+def train_and_save_cnn_plantvillage(plantvillage_dir, save_path, img_height=224, img_width=224, epochs=5):
     """Trains a Transfer Learning CNN on PlantVillage dataset for disease classification."""
     print("Initializing CNN Training Pipeline (PlantVillage)...")
     
@@ -142,9 +142,195 @@ def train_and_save_cnn_plantvillage(plantvillage_dir, save_path, img_height=150,
 
 
 # ==========================================
+# 3. CNN TRAINING PIPELINE - SPECIES-SPECIFIC DISEASE CLASSIFICATION
+# ==========================================
+def train_plantvillage_species_specific_disease_model(plantvillage_dir, save_path, species_name, img_height=224, img_width=224, epochs=5):
+    """Trains a specialized CNN on a specific species in the PlantVillage dataset."""
+    print(f"Initializing CNN Training Pipeline (PlantVillage - {species_name})...")
+    
+    # 1. Scan PlantVillage directory for disease classes
+    class_dirs = [d for d in os.listdir(plantvillage_dir) 
+                  if os.path.isdir(os.path.join(plantvillage_dir, d))]
+    
+    # Filter by species_name
+    class_dirs = [d for d in class_dirs if d.startswith(species_name)]
+    class_names = sorted(class_dirs)
+    num_classes = len(class_names)
+    
+    if num_classes == 0:
+        print(f"[!] ERROR: No class directories found in {plantvillage_dir} for species {species_name}")
+        return []
+    
+    print(f"Found {num_classes} disease classes for {species_name}: {class_names}")
+    
+    # 2. Build file paths and labels
+    image_paths = []
+    labels = []
+    
+    for class_idx, class_name in enumerate(class_names):
+        class_dir = os.path.join(plantvillage_dir, class_name)
+        image_files = [f for f in os.listdir(class_dir) 
+                      if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+        
+        for image_file in image_files:
+            image_path = os.path.join(class_dir, image_file)
+            if os.path.exists(image_path) and os.path.getsize(image_path) > 0:
+                image_paths.append(image_path)
+                labels.append(class_idx)
+    
+    if len(image_paths) == 0:
+        print(f"[!] ERROR: No valid images found for {species_name}")
+        return []
+        
+    image_paths_array = np.array(image_paths)
+    labels_array = np.array(labels)
+    
+    X_train_paths, X_val_paths, y_train, y_val = train_test_split(
+        image_paths_array, labels_array, test_size=0.2, random_state=123, stratify=labels_array
+    )
+    
+    def process_path(file_path, label):
+        img = tf.io.read_file(file_path)
+        img = tf.image.decode_jpeg(img, channels=3)
+        img = tf.image.resize(img, [img_height, img_width])
+        return img, label
+    
+    def create_dataset(paths, labels):
+        ds = tf.data.Dataset.from_tensor_slices((paths, labels))
+        ds = ds.map(process_path, num_parallel_calls=tf.data.AUTOTUNE)
+        ds = ds.batch(32).prefetch(tf.data.AUTOTUNE)
+        return ds
+    
+    train_ds = create_dataset(X_train_paths, y_train)
+    val_ds = create_dataset(X_val_paths, y_val)
+    
+    base_model = MobileNetV2(input_shape=(img_height, img_width, 3), include_top=False, weights='imagenet')
+    base_model.trainable = False
+    
+    augmenter = get_augmenter(img_height, img_width)
+    
+    model = models.Sequential([
+        augmenter,
+        base_model,
+        layers.GlobalAveragePooling2D(),
+        layers.Dense(256, activation='relu'),
+        layers.Dropout(0.3),
+        layers.Dense(128, activation='relu'),
+        layers.Dropout(0.2),
+        layers.Dense(num_classes, activation='softmax')
+    ])
+    
+    model.compile(optimizer='adam',
+                  loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
+                  metrics=['accuracy'])
+    
+    print(f"Training CNN for {epochs} epochs...")
+    model.fit(train_ds, validation_data=val_ds, epochs=epochs)
+    
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    model.save(save_path)
+    print(f"CNN successfully saved to {save_path}")
+    
+    return class_names
+
+
+def train_plantvillage_species_identifier(plantvillage_dir, save_path, img_height=224, img_width=224, epochs=5):
+    """Trains a primary CNN to identify the plant species in the PlantVillage dataset."""
+    print("Initializing Primary Species Identifier CNN Training Pipeline...")
+    
+    class_dirs = [d for d in os.listdir(plantvillage_dir) 
+                  if os.path.isdir(os.path.join(plantvillage_dir, d))]
+    
+    # Extract unique species (first part before underscore)
+    species_set = set([d.split('_')[0] for d in class_dirs])
+    species_names = sorted(list(species_set))
+    num_species = len(species_names)
+    
+    if num_species == 0:
+        print(f"[!] ERROR: No species found in {plantvillage_dir}")
+        return []
+        
+    print(f"Found {num_species} distinct species: {species_names}")
+    
+    species_to_idx = {s: i for i, s in enumerate(species_names)}
+    
+    image_paths = []
+    labels = []
+    
+    for class_dir_name in class_dirs:
+        class_dir = os.path.join(plantvillage_dir, class_dir_name)
+        species = class_dir_name.split('_')[0]
+        species_idx = species_to_idx[species]
+        
+        image_files = [f for f in os.listdir(class_dir) 
+                      if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+        
+        for image_file in image_files:
+            image_path = os.path.join(class_dir, image_file)
+            if os.path.exists(image_path) and os.path.getsize(image_path) > 0:
+                image_paths.append(image_path)
+                labels.append(species_idx)
+                
+    if len(image_paths) == 0:
+        print("[!] ERROR: No valid images found.")
+        return []
+        
+    image_paths_array = np.array(image_paths)
+    labels_array = np.array(labels)
+    
+    X_train_paths, X_val_paths, y_train, y_val = train_test_split(
+        image_paths_array, labels_array, test_size=0.2, random_state=123, stratify=labels_array
+    )
+    
+    def process_path(file_path, label):
+        img = tf.io.read_file(file_path)
+        img = tf.image.decode_jpeg(img, channels=3)
+        img = tf.image.resize(img, [img_height, img_width])
+        return img, label
+    
+    def create_dataset(paths, labels):
+        ds = tf.data.Dataset.from_tensor_slices((paths, labels))
+        ds = ds.map(process_path, num_parallel_calls=tf.data.AUTOTUNE)
+        ds = ds.batch(32).prefetch(tf.data.AUTOTUNE)
+        return ds
+    
+    train_ds = create_dataset(X_train_paths, y_train)
+    val_ds = create_dataset(X_val_paths, y_val)
+    
+    base_model = MobileNetV2(input_shape=(img_height, img_width, 3), include_top=False, weights='imagenet')
+    base_model.trainable = False
+    
+    augmenter = get_augmenter(img_height, img_width)
+    
+    model = models.Sequential([
+        augmenter,
+        base_model,
+        layers.GlobalAveragePooling2D(),
+        layers.Dense(256, activation='relu'),
+        layers.Dropout(0.3),
+        layers.Dense(128, activation='relu'),
+        layers.Dropout(0.2),
+        layers.Dense(num_species, activation='softmax')
+    ])
+    
+    model.compile(optimizer='adam',
+                  loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
+                  metrics=['accuracy'])
+    
+    print(f"Training Primary Species Identifier CNN for {epochs} epochs...")
+    model.fit(train_ds, validation_data=val_ds, epochs=epochs)
+    
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    model.save(save_path)
+    print(f"Primary Species Identifier CNN successfully saved to {save_path}")
+    
+    return species_names
+
+
+# ==========================================
 # 4. CNN TRAINING PIPELINE - TILLER COUNT REGRESSION
 # ==========================================
-def train_tiller_cnn_regressor(df, save_path, img_height=150, img_width=150, epochs=10):
+def train_tiller_cnn_regressor(df, save_path, img_height=224, img_width=224, epochs=10):
     """Trains a CNN Regressor to predict continuous tiller count from images."""
     print("Initializing CNN Regressor Training Pipeline (Tiller Count)...")
     
@@ -225,7 +411,7 @@ def train_tiller_cnn_regressor(df, save_path, img_height=150, img_width=150, epo
 # ==========================================
 # 5. CNN TRAINING PIPELINE - CUSTOM BASELINE (WITH PADDING)
 # ==========================================
-def train_custom_baseline_cnn(train_ds, val_ds, num_classes, save_path, img_height=150, img_width=150, epochs=5, use_augmenter=True, activation='relu'):
+def train_custom_baseline_cnn(train_ds, val_ds, num_classes, save_path, img_height=224, img_width=224, epochs=5, use_augmenter=True, activation='relu'):
     """Trains a custom CNN from scratch to serve as a comparative baseline against MobileNetV2."""
     print(f"Initializing Custom Baseline CNN (Augmenter: {use_augmenter}, Activation: {activation})...")
     
@@ -289,7 +475,7 @@ def train_custom_baseline_cnn(train_ds, val_ds, num_classes, save_path, img_heig
 # ==========================================
 # 6. CNN TRAINING PIPELINE - BIOMASS REGRESSION (Dataset 6)
 # ==========================================
-def train_biomass_cnn_regressor(df, save_path, target='fresh_weight', img_height=150, img_width=150, epochs=10):
+def train_biomass_cnn_regressor(df, save_path, target='fresh_weight', img_height=224, img_width=224, epochs=10):
     """
     Trains a CNN Regressor to predict continuous biomass (fresh or dry weight)
     from plant images.

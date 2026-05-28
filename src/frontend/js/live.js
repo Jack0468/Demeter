@@ -29,7 +29,8 @@ export function refreshLiveTab(diagnosis, history) {
   hideEmptyState();
 
   renderDiseaseCard(diagnosis.cnn_result);
-  renderHybridDiseaseCard(diagnosis.hybrid_prediction);
+  const svm_pred = diagnosis.hierarchical_svm_prediction || diagnosis.hybrid_prediction;
+  renderHybridDiseaseCard(svm_pred);
   renderHealthCard(diagnosis);
   renderSensorReadouts(diagnosis.sensors);
   renderHistoryTable(history);

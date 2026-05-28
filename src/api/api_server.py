@@ -51,6 +51,8 @@ _model_state = {
     "visual_kmeans": None,
     "tabular_kmeans": None,
     "master_kmeans": None,
+    "hybrid_svm_identifier": None,
+    "hybrid_species_svms": {},
     "class_dirs": [],
     "error": None
 }
@@ -101,6 +103,36 @@ def _load_models():
         if os.path.exists(hybrid_hist_scaler_path):
             _model_state["hybrid_hist_scaler"] = joblib.load(hybrid_hist_scaler_path)
             
+        # Hierarchical SVM components
+        identifier_svm_path = str(PROJECT_ROOT / "models/experimentation/hybrid_svm_species_identifier.joblib")
+        if os.path.exists(identifier_svm_path):
+            _model_state["hybrid_svm_identifier"] = {
+                "svm": joblib.load(identifier_svm_path),
+                "fft_scaler": joblib.load(str(PROJECT_ROOT / "models/experimentation/hybrid_svm_species_identifier_fft_scaler.joblib")),
+                "hist_scaler": joblib.load(str(PROJECT_ROOT / "models/experimentation/hybrid_svm_species_identifier_hist_scaler.joblib")),
+                "fft_pca": joblib.load(str(PROJECT_ROOT / "models/experimentation/hybrid_svm_species_identifier_fft_pca.joblib")),
+                "classes": joblib.load(str(PROJECT_ROOT / "models/experimentation/hybrid_svm_species_identifier_classes.joblib"))
+            }
+            
+            # Load all specific species SVMs
+            species_dir = str(PROJECT_ROOT / "models/experimentation/species_svms")
+            if os.path.exists(species_dir):
+                for f in os.listdir(species_dir):
+                    if f.endswith(".joblib") and not f.endswith("_scaler.joblib") and not f.endswith("_pca.joblib") and not f.endswith("_classes.joblib"):
+                        prefix = f.replace(".joblib", "")
+                        species_name = prefix.split("_")[-1]
+                        
+                        try:
+                            _model_state["hybrid_species_svms"][species_name] = {
+                                "svm": joblib.load(os.path.join(species_dir, f)),
+                                "fft_scaler": joblib.load(os.path.join(species_dir, f"{prefix}_fft_scaler.joblib")),
+                                "hist_scaler": joblib.load(os.path.join(species_dir, f"{prefix}_hist_scaler.joblib")),
+                                "fft_pca": joblib.load(os.path.join(species_dir, f"{prefix}_fft_pca.joblib")),
+                                "classes": joblib.load(os.path.join(species_dir, f"{prefix}_classes.joblib"))
+                            }
+                        except Exception as e:
+                            print(f"[Demeter] Failed to load {species_name} SVM: {e}")
+
         visual_km_path = str(PROJECT_ROOT / "models/visual_health_clusters.joblib")
         tabular_km_path = str(PROJECT_ROOT / "models/tabular_health_clusters.joblib")
         master_km_path = str(PROJECT_ROOT / "models/master_health_clusters.joblib")
@@ -520,6 +552,16 @@ def predict():
                     _model_state["hybrid_svm"],
                     _model_state["class_dirs"]
                 )
+                
+            future_hierarchical_svm = None
+            if _model_state["hybrid_svm_identifier"]:
+                from src.core.inference_engine import predict_hybrid_hierarchical
+                future_hierarchical_svm = executor.submit(
+                    predict_hybrid_hierarchical,
+                    image_path,
+                    _model_state["hybrid_svm_identifier"],
+                    _model_state["hybrid_species_svms"]
+                )
             
             # Retrieve basic results first
             disease = future_disease.result()
@@ -545,6 +587,12 @@ def predict():
                 hybrid_res = future_hybrid.result()
                 all_preds["hybrid_result"] = hybrid_res
                 svm_conf = hybrid_res.get("confidence", 0.0)
+                
+            if future_hierarchical_svm:
+                hierarchical_res = future_hierarchical_svm.result()
+                all_preds["hierarchical_svm_result"] = hierarchical_res
+                # Update svm_conf for K-Means if this is the primary SVM now, or leave baseline
+                svm_conf = hierarchical_res.get("confidence", svm_conf)
 
             # Water Stress
             if _model_state["cnn_water"] and _model_state["rf_water"]:
