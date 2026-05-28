@@ -23,7 +23,14 @@ export function initLiveTab() {
  */
 export function refreshLiveTab(diagnosis, history) {
   if (!diagnosis) {
-    showEmptyState();
+    hideEmptyState();
+    renderDiseaseCard(null);
+    renderHybridDiseaseCard(null);
+    renderHealthCard(null);
+    renderSensorReadouts(null);
+    renderHistoryTable(null);
+    renderLastUpdated(null);
+    renderMultiModels(null);
     return;
   }
   hideEmptyState();
@@ -40,7 +47,7 @@ export function refreshLiveTab(diagnosis, history) {
 
 function showEmptyState() {
   const grid = document.getElementById('live-grid');
-  if (grid) grid.style.opacity = '0.3';
+  if (grid) grid.style.opacity = '1';
 }
 
 function hideEmptyState() {
