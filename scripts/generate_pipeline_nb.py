@@ -5,7 +5,7 @@ nb = nbf.v4.new_notebook()
 
 text_intro = """\
 # Demeter Data Pipeline Verification & Benchmarking
-This notebook verifies the data pipeline from start to finish and provides computational benchmarks comparing the deep CNN model (MobileNetV2) against our lightweight Hybrid SVM model (FFT + HSV).
+This notebook verifies the data pipeline from start to finish and provides computational benchmarks comparing the deep CNN models against our lightweight Hybrid SVM models (FFT + HSV).
 
 The goal is to provide hard evidence that the Hybrid SVM significantly improves computation times, making it highly suitable for edge-device deployment."""
 
@@ -29,7 +29,7 @@ warnings.filterwarnings('ignore')
 # Add src to path
 sys.path.append(os.path.abspath('..'))
 
-from src.core.inference_engine import extract_hybrid_fft_features, predict_hybrid_disease, predict_hierarchical_cnn
+from src.core.inference_engine import extract_hybrid_fft_features, predict_hybrid_disease, predict_hierarchical_cnn, predict_hybrid_hierarchical
 from src.utils.data_loader import load_image_for_cnn
 """
 
@@ -64,17 +64,6 @@ if os.path.exists(cnn_path):
 else:
     print(f"Base CNN model not found at {cnn_path}")
 
-# Load SVM models
-svm_dir = '../models/experimentation'
-try:
-    svm_model = joblib.load(os.path.join(svm_dir, 'hybrid_svm.joblib'))
-    scaler_fft = joblib.load(os.path.join(svm_dir, 'hybrid_fft_scaler.joblib'))
-    pca_fft = joblib.load(os.path.join(svm_dir, 'hybrid_fft_pca.joblib'))
-    scaler_hist = joblib.load(os.path.join(svm_dir, 'hybrid_hist_scaler.joblib'))
-    print("Loaded SVM pipeline components.")
-except Exception as e:
-    print(f"SVM pipeline components missing: {e}")
-
 print("Loading Hierarchical CNN models...")
 id_model_path = '../models/demeter_cnn_plantvillage_species_identifier.keras'
 hier_models = {}
@@ -86,6 +75,41 @@ if os.path.exists(id_model_path):
             hier_models[species.lower()] = tf.keras.models.load_model(model_path)
 else:
     print("Hierarchical CNN models not found.")
+
+# Load SVM models
+svm_dir = '../models/experimentation'
+try:
+    svm_model = joblib.load(os.path.join(svm_dir, 'hybrid_svm.joblib'))
+    scaler_fft = joblib.load(os.path.join(svm_dir, 'hybrid_fft_scaler.joblib'))
+    pca_fft = joblib.load(os.path.join(svm_dir, 'hybrid_fft_pca.joblib'))
+    scaler_hist = joblib.load(os.path.join(svm_dir, 'hybrid_hist_scaler.joblib'))
+    print("Loaded Base SVM pipeline components.")
+except Exception as e:
+    print(f"Base SVM pipeline components missing: {e}")
+
+print("Loading Hierarchical SVM models...")
+try:
+    identifier_components = {
+        "svm": joblib.load(os.path.join(svm_dir, 'hybrid_svm_species_identifier.joblib')),
+        "classes": joblib.load(os.path.join(svm_dir, 'hybrid_svm_species_identifier_classes.joblib')),
+        "fft_pca": joblib.load(os.path.join(svm_dir, 'hybrid_svm_species_identifier_fft_pca.joblib')),
+        "fft_scaler": joblib.load(os.path.join(svm_dir, 'hybrid_svm_species_identifier_fft_scaler.joblib')),
+        "hist_scaler": joblib.load(os.path.join(svm_dir, 'hybrid_svm_species_identifier_hist_scaler.joblib'))
+    }
+    
+    species_svms_cache = {}
+    for species in ['pepper', 'potato', 'tomato']:
+        spec_dir = os.path.join(svm_dir, 'species_svms')
+        species_svms_cache[species] = {
+            "svm": joblib.load(os.path.join(spec_dir, f'hybrid_svm_{species}.joblib')),
+            "classes": joblib.load(os.path.join(spec_dir, f'hybrid_svm_{species}_classes.joblib')),
+            "fft_pca": joblib.load(os.path.join(spec_dir, f'hybrid_svm_{species}_fft_pca.joblib')),
+            "fft_scaler": joblib.load(os.path.join(spec_dir, f'hybrid_svm_{species}_fft_scaler.joblib')),
+            "hist_scaler": joblib.load(os.path.join(spec_dir, f'hybrid_svm_{species}_hist_scaler.joblib'))
+        }
+    print("Loaded Hierarchical SVM pipeline components.")
+except Exception as e:
+    print(f"Hierarchical SVM pipeline components missing: {e}")
 """
 
 text_cnn = """\
@@ -183,8 +207,8 @@ print(f"  - Inference Time: {hier_cnn_avg_inf:.2f} ms")
 """
 
 text_svm = """\
-## 4. SVM (FFT+HSV) Inference Benchmark
-We measure the total time taken for Otsu segmentation, 2D FFT, HSV histograms, PCA, and SVM inference."""
+## 4. Base SVM (FFT+HSV) Inference Benchmark
+We measure the total time taken for Otsu segmentation, 2D FFT, HSV histograms, PCA, and Base SVM inference."""
 
 code_svm = """\
 svm_times = []
@@ -217,22 +241,47 @@ for img_path in sample_images:
 svm_avg_time = np.mean(svm_times) if svm_times else 0
 svm_avg_prep = np.mean(svm_prep_times) if svm_prep_times else 0
 svm_avg_inf = np.mean(svm_inf_times) if svm_inf_times else 0
-print(f"Average SVM Total Time: {svm_avg_time:.2f} ms per image")
+print(f"Average Base SVM Total Time: {svm_avg_time:.2f} ms per image")
 print(f"  - Preprocessing Time (Otsu + FFT + HSV): {svm_avg_prep:.2f} ms")
 print(f"  - Inference Time: {svm_avg_inf:.2f} ms")
 """
 
+text_hier_svm = """\
+## 5. Hierarchical SVM Inference Benchmark
+We measure the total time taken for feature extraction, primary species identification, and species-specific disease classification."""
+
+code_hier_svm = """\
+hier_svm_times = []
+
+# Warm up
+if len(sample_images) > 0 and 'identifier_components' in locals():
+    predict_hybrid_hierarchical(sample_images[0], identifier_components, species_svms_cache)
+
+for img_path in sample_images:
+    start_time = time.time()
+    try:
+        predict_hybrid_hierarchical(img_path, identifier_components, species_svms_cache)
+    except Exception as e:
+        print(f"Failed on {img_path}: {e}")
+        
+    end_time = time.time()
+    hier_svm_times.append((end_time - start_time) * 1000) # milliseconds
+
+hier_svm_avg_time = np.mean(hier_svm_times) if hier_svm_times else 0
+print(f"Average Hierarchical SVM Total Time: {hier_svm_avg_time:.2f} ms per image")
+"""
+
 text_compare = """\
-## 5. Visual Comparison
+## 6. Visual Comparison
 Let's generate the comparison charts to paste into the presentation."""
 
 code_compare = """\
-if cnn_times and svm_times and hier_cnn_times:
-    labels = ['CNN (Base)', 'CNN (Hierarchical)', 'SVM (FFT + HSV)']
-    times = [cnn_avg_time, hier_cnn_avg_time, svm_avg_time]
+if cnn_times and svm_times and hier_cnn_times and hier_svm_times:
+    labels = ['CNN (Base)', 'CNN (Hierarchical)', 'SVM (Base)', 'SVM (Hierarchical)']
+    times = [cnn_avg_time, hier_cnn_avg_time, svm_avg_time, hier_svm_avg_time]
     
     fig, ax = plt.subplots(figsize=(10, 6))
-    bars = ax.bar(labels, times, color=['#e74c3c', '#f39c12', '#2ecc71'])
+    bars = ax.bar(labels, times, color=['#e74c3c', '#f39c12', '#2ecc71', '#3498db'])
     
     ax.set_ylabel('Inference Latency (ms / image)')
     ax.set_title('Computational Latency Comparison: CNN vs SVM')
@@ -247,8 +296,8 @@ if cnn_times and svm_times and hier_cnn_times:
     plt.show()
     
     speedup_base = cnn_avg_time / svm_avg_time
-    speedup_hier = hier_cnn_avg_time / svm_avg_time
-    print(f"CONCLUSION: The SVM pipeline is {speedup_base:.2f}x faster than the Base CNN and {speedup_hier:.2f}x faster than the Hierarchical CNN.")
+    speedup_hier = hier_cnn_avg_time / hier_svm_avg_time
+    print(f"CONCLUSION: The Base SVM is {speedup_base:.2f}x faster than the Base CNN and the Hierarchical SVM is {speedup_hier:.2f}x faster than the Hierarchical CNN.")
 """
 
 nb['cells'] = [
@@ -262,6 +311,8 @@ nb['cells'] = [
     nbf.v4.new_code_cell(code_hier_cnn),
     nbf.v4.new_markdown_cell(text_svm),
     nbf.v4.new_code_cell(code_svm),
+    nbf.v4.new_markdown_cell(text_hier_svm),
+    nbf.v4.new_code_cell(code_hier_svm),
     nbf.v4.new_markdown_cell(text_compare),
     nbf.v4.new_code_cell(code_compare)
 ]
